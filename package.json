@@ -1,0 +1,37 @@
+{
+  "name": "animestream-addon",
+  "version": "1.0.0",
+  "description": "Stremio Addon - Comprehensive Anime Catalog with 40,000+ titles from anime-offline-database",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "build-db": "node scripts/build-database.js",
+    "build-db:test": "node scripts/build-database.js --test",
+    "update-db": "node scripts/update-database.js",
+    "update-db:dry": "node scripts/update-database.js --dry-run"
+  },
+  "keywords": [
+    "stremio",
+    "addon",
+    "anime",
+    "myanimelist",
+    "kitsu",
+    "anilist",
+    "catalog",
+    "anime-offline-database"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "lru-cache": "^10.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

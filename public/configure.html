@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AnimeStream Configuration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/png" href="https://i.imgur.com/t8iqMpT.png">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --bg:#0A0F1C;
+    --card:#161737;
+    --fg:#EEF1F7;
+    --muted:#5F67AD;
+    --preview:#5A5F8F;
+    --box:#0E0B1F;
+    --primary:#3926A6;
+    --primary-hover:#5a42d6;
+    --border:rgba(255,255,255,.08);
+    --shadow:0 28px 96px rgba(0,0,0,.46);
+    --radius:26px;
+    --ctl-h:50px;
+    --pill-h: var(--ctl-h);
+    --pill-gap:10px;
+  }
+  html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;}
+  .wrap{max-width:800px;margin:56px auto;padding:0 32px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:48px;}
+  h1{font-weight:800;font-size:38px;letter-spacing:.2px;margin:0 0 8px;text-align:center;}
+  .subtle{color:var(--muted);text-align:center;margin:-2px 0 34px;}
+  .stack{display:grid;grid-template-columns:1fr;row-gap:22px}
+  label{display:block;font-weight:600;font-size:15px;margin:0 0 8px;}
+  .section-title{font-weight:600;font-size:18px;margin:0 0 16px;color:var(--fg)}
+  .control{width:100%;background:var(--box);color:var(--fg);border:1px solid transparent;border-radius:16px;padding:0 16px;height:var(--ctl-h);line-height:calc(var(--ctl-h) - 2px);outline:none;}
+  .control:focus{box-shadow:0 0 0 2px rgba(57,38,166,.35);border-color:var(--primary)}
+  .help{color:var(--muted);font-size:13px;margin-top:8px;line-height:1.45}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:18px;border:2px solid transparent;padding:14px 18px;min-width:220px;cursor:pointer;text-decoration:none;color:var(--fg);transition:transform .05s ease, box-shadow .2s ease, background .2s ease, border .2s ease;}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--primary);border-color:var(--primary)}
+  .btn-primary:hover{box-shadow:0 12px 38px rgba(57,38,166,.35);background:var(--primary-hover)}
+  .btn-outline{background:transparent;border-color:var(--primary);color:var(--fg)}
+  .btn-outline:hover{background:rgba(57,38,166,.08)}
+  .toggle-box{display:flex;align-items:center;gap:12px;background:var(--box);border:1px solid transparent;border-radius:16px;padding:12px 16px;height:var(--ctl-h);cursor:pointer;user-select:none;transition:all 0.2s ease}
+  .toggle-box:hover{border-color:rgba(57,38,166,.3)}
+  .toggle-box input{transform:scale(1.1);accent-color:var(--primary)}
+  .toggle-box .label{font-weight:600}
+  .buttons{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:32px}
+  @media (max-width: 720px){ .buttons{grid-template-columns:1fr} }
+  code.inline{background:var(--box);border:1px solid transparent;padding:12px;border-radius:8px;font-size:12px;color:var(--preview);display:flex;align-items:center;word-break:break-all;line-height:1.4;min-height:calc(2 * 1.4em);white-space:pre-wrap;overflow-wrap:anywhere}
+  .footline{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--pill-gap);flex-wrap:wrap;margin-top:16px}
+  .manifest-container{flex: 1;min-width:0}
+  .manifest-label{color:var(--muted);font-size:14px;margin-bottom:8px;font-weight:500}
+  .divider{height:1px;background:var(--border);margin:24px 0}
+  .stat{display:inline-block;background:var(--box);padding:4px 12px;border-radius:8px;font-size:13px;color:var(--muted);margin-right:8px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>AnimeStream</h1>
+      <p class="subtle">Configure your anime addon settings</p>
+
+      <div class="stack">
+        <!-- Display Settings -->
+        <div>
+          <div class="section-title">Display Settings</div>
+          
+          <div id="toggleShowCounts" class="toggle-box" role="button" tabindex="0" aria-pressed="true">
+            <input id="showCounts" type="checkbox" checked />
+            <div class="label">Show counts on filter options</div>
+          </div>
+          <div class="help">When enabled, genres and seasons will show item counts like "Action (1467)". Disable for cleaner display.</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Currently Airing Settings -->
+        <div>
+          <div class="section-title">Currently Airing Settings</div>
+          
+          <div id="toggleExcludeLongRunning" class="toggle-box" role="button" tabindex="0" aria-pressed="false">
+            <input id="excludeLongRunning" type="checkbox" />
+            <div class="label">Exclude long-running anime</div>
+          </div>
+          <div class="help">Hide long-running anime like One Piece, Detective Conan, etc. from the "Currently Airing" catalog. Only shows anime relevant to this year.</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Stats -->
+        <div>
+          <div class="section-title">Database Stats</div>
+          <div id="stats">
+            <span class="stat" id="statTotal">Loading...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="buttons">
+        <a id="installApp" class="btn btn-primary" style="width:100%">Install to Stremio</a>
+        <a id="installWeb" class="btn btn-outline" style="width:100%">Install to Web</a>
+      </div>
+
+      <div class="footline">
+        <div class="manifest-container">
+          <div class="manifest-label">Manifest URL:</div>
+          <code id="manifestUrl" class="inline"></code>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:24px;color:var(--muted);font-size:13px">
+      AnimeStream v1.0.0 • 7,000+ anime from Kitsu with IMDB matching
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    'use strict';
+    
+    const originHost = window.location.origin;
+    
+    // State
+    const state = {
+      showCounts: true,
+      excludeLongRunning: false
+    };
+    
+    // Load from localStorage
+    try { 
+      const saved = JSON.parse(localStorage.getItem('animestream_config') || '{}');
+      Object.assign(state, saved);
+    } catch {}
+    
+    // Load from URL parameters (for existing installations)
+    function loadFromURL() {
+      // Check path-based config
+      const pathMatch = window.location.pathname.match(/^\/([^/]+)\/configure/);
+      if (pathMatch) {
+        const configStr = decodeURIComponent(pathMatch[1]);
+        configStr.split('&').forEach(part => {
+          const [key, value] = part.split('=');
+          if (key === 'showCounts') {
+            state.showCounts = value !== '0';
+          }
+          if (key === 'excludeLongRunning') {
+            state.excludeLongRunning = value === '1';
+          }
+        });
+      }
+      
+      // Query params
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('showCounts')) {
+        state.showCounts = params.get('showCounts') !== '0';
+      }
+      if (params.get('excludeLongRunning')) {
+        state.excludeLongRunning = params.get('excludeLongRunning') === '1';
+      }
+    }
+    
+    loadFromURL();
+    
+    // DOM elements
+    const $ = sel => document.querySelector(sel);
+    const showCountsEl = $('#showCounts');
+    const excludeLongRunningEl = $('#excludeLongRunning');
+    const manifestEl = $('#manifestUrl');
+    const appBtn = $('#installApp');
+    const webBtn = $('#installWeb');
+    const statsEl = $('#stats');
+    
+    // Hydrate toggles from state
+    showCountsEl.checked = state.showCounts !== false;
+    excludeLongRunningEl.checked = state.excludeLongRunning === true;
+    
+    function persist() {
+      localStorage.setItem('animestream_config', JSON.stringify(state));
+    }
+    
+    // Fetch stats from server
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/stats');
+        const data = await response.json();
+        
+        statsEl.innerHTML = `
+          <span class="stat">Total: ${data.totalAnime?.toLocaleString() || '?'} anime</span>
+          <span class="stat">Series: ${data.totalSeries?.toLocaleString() || '?'}</span>
+          <span class="stat">Movies: ${data.totalMovies?.toLocaleString() || '?'}</span>
+          <span class="stat">Genres: ${data.genreCount || '?'}</span>
+        `;
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+        statsEl.innerHTML = '<span class="stat">7,453 anime</span>';
+      }
+    }
+    
+    // Event handlers
+    showCountsEl.onchange = () => {
+      state.showCounts = showCountsEl.checked;
+      persist();
+      rerender();
+    };
+    
+    excludeLongRunningEl.onchange = () => {
+      state.excludeLongRunning = excludeLongRunningEl.checked;
+      persist();
+      rerender();
+    };
+    
+    // Wire toggle box click
+    function wireToggle(boxId, inputEl) {
+      const box = document.getElementById(boxId);
+      if (!box) return;
+      const updateAria = () => box.setAttribute('aria-pressed', inputEl.checked ? 'true' : 'false');
+      box.addEventListener('click', (e) => {
+        if (e.target === inputEl) return;
+        inputEl.checked = !inputEl.checked;
+        inputEl.dispatchEvent(new Event('change'));
+        updateAria();
+      });
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          inputEl.checked = !inputEl.checked;
+          inputEl.dispatchEvent(new Event('change'));
+          updateAria();
+        }
+      });
+      updateAria();
+    }
+    wireToggle('toggleShowCounts', showCountsEl);
+    wireToggle('toggleExcludeLongRunning', excludeLongRunningEl);
+    
+    // Build config URL
+    function buildConfigPath() {
+      const parts = [];
+      
+      if (!state.showCounts) {
+        parts.push('showCounts=0');
+      }
+      
+      if (state.excludeLongRunning) {
+        parts.push('excludeLongRunning=1');
+      }
+      
+      return parts.join('&');
+    }
+    
+    function rerender() {
+      const configPath = buildConfigPath();
+      let manifestUrl;
+      
+      if (configPath) {
+        manifestUrl = `${originHost}/${configPath}/manifest.json`;
+      } else {
+        manifestUrl = `${originHost}/manifest.json`;
+      }
+      
+      // Display full URL (including protocol) for easy copy/paste
+      manifestEl.textContent = manifestUrl;
+      
+      // Install links
+      if (configPath) {
+        appBtn.href = `stremio://${window.location.host}/${configPath}/manifest.json`;
+      } else {
+        appBtn.href = `stremio://${window.location.host}/manifest.json`;
+      }
+      webBtn.href = `https://web.stremio.com/#/addons?addon=${encodeURIComponent(manifestUrl)}`;
+    }
+    
+    // Initialize
+    fetchStats();
+    rerender();
+  })();
+  </script>
+</body>
+</html>

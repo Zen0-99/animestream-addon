@@ -1,0 +1,2 @@
+*.tsv.gz filter=lfs diff=lfs merge=lfs -text
+data/anime-offline-database.json filter=lfs diff=lfs merge=lfs -text
