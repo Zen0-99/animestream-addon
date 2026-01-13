@@ -134,12 +134,9 @@ function formatAnimeMeta(anime) {
     formatted.description = anime.description.substring(0, 200) + '...';
   }
   
-  // Handle Kitsu poster URLs
-  if (anime.poster) {
-    if (anime.poster.includes('/poster_images/')) {
-      formatted.poster = anime.poster.replace(/\/large\./, '/medium.');
-    }
-  }
+  // Remove poster so Stremio uses Cinemeta's higher quality posters
+  // Cinemeta will fetch the poster based on the IMDB ID (tt...)
+  delete formatted.poster;
   
   return formatted;
 }
