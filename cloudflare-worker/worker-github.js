@@ -952,75 +952,103 @@ async function handleMeta(catalog, type, id) {
     return { meta: null };
   }
   
+  // Check if we need to enrich metadata from AllAnime/Cinemeta
+  const needsEnrichment = isMetadataIncomplete(anime);
+  
   // Search AllAnime for this show
   const showId = await findAllAnimeShow(anime.name);
-  if (!showId) {
+  let showDetails = null;
+  
+  if (showId) {
+    // Get full show details from AllAnime
+    showDetails = await getAllAnimeShowDetails(showId);
+    if (showDetails && needsEnrichment) {
+      console.log(`Enriching metadata from AllAnime for: ${anime.name}`);
+    }
+  } else {
     console.log(`No AllAnime match for: ${anime.name}`);
-    return { meta: null };
   }
   
-  // Get full show details from AllAnime
-  const showDetails = await getAllAnimeShowDetails(showId);
-  if (!showDetails) {
-    console.log(`Failed to get AllAnime details for: ${showId}`);
-    return { meta: null };
+  // If we still need enrichment and AllAnime failed, try Cinemeta as fallback
+  // (Only for IMDB IDs, and only if we don't already have Cinemeta data)
+  if (needsEnrichment && !showDetails && !cinemeta && baseId.startsWith('tt')) {
+    console.log(`Trying Cinemeta fallback for: ${anime.name}`);
+    cinemeta = await fetchCinemetaMeta(baseId, type);
   }
   
-  // Check if we need to enrich metadata from AllAnime
-  const needsEnrichment = isMetadataIncomplete(anime);
-  if (needsEnrichment) {
-    console.log(`Enriching metadata from AllAnime for: ${anime.name}`);
-  }
-  
-  // Build episodes from AllAnime data
+  // Build episodes from AllAnime data (if available) or catalog data
   const episodes = [];
-  const availableEps = showDetails.availableEpisodesDetail || {};
-  const subEpisodes = availableEps.sub || [];
-  const dubEpisodes = availableEps.dub || [];
   
-  // Use sub episodes as the primary list (usually more complete)
-  const allEpisodes = [...new Set([...subEpisodes, ...dubEpisodes])].sort((a, b) => parseFloat(a) - parseFloat(b));
-  
-  for (const epNum of allEpisodes) {
-    const epNumber = parseFloat(epNum);
-    // Assume season 1 for now (most anime)
-    const season = 1;
+  if (showDetails) {
+    const availableEps = showDetails.availableEpisodesDetail || {};
+    const subEpisodes = availableEps.sub || [];
+    const dubEpisodes = availableEps.dub || [];
     
-    episodes.push({
-      id: `${baseId}:${season}:${Math.floor(epNumber)}`,
-      title: `Episode ${epNumber}`,
-      season: season,
-      episode: Math.floor(epNumber),
-      thumbnail: showDetails.thumbnail || anime.poster, // Use show poster as fallback thumbnail
-      released: new Date().toISOString() // AllAnime doesn't provide release dates easily
-    });
+    // Use sub episodes as the primary list (usually more complete)
+    const allEpisodes = [...new Set([...subEpisodes, ...dubEpisodes])].sort((a, b) => parseFloat(a) - parseFloat(b));
+    
+    for (const epNum of allEpisodes) {
+      const epNumber = parseFloat(epNum);
+      // Assume season 1 for now (most anime)
+      const season = 1;
+      
+      episodes.push({
+        id: `${baseId}:${season}:${Math.floor(epNumber)}`,
+        title: `Episode ${epNumber}`,
+        season: season,
+        episode: Math.floor(epNumber),
+        thumbnail: showDetails.thumbnail || anime.poster, // Use show poster as fallback thumbnail
+        released: new Date().toISOString() // AllAnime doesn't provide release dates easily
+      });
+    }
+  } else if (cinemeta && cinemeta.videos && cinemeta.videos.length > 0) {
+    // Use Cinemeta videos as second fallback
+    episodes.push(...cinemeta.videos);
+  } else if (anime.videos && anime.videos.length > 0) {
+    // Use catalog videos as last resort
+    episodes.push(...anime.videos);
   }
   
-  // Build meta object with enrichment from AllAnime when needed
-  // Priority: Use AllAnime data when Cinemeta data is poor/missing
+  // Build meta object with enrichment from best available source
+  // Priority: AllAnime > Cinemeta > Catalog
+  const hasAllAnime = showDetails !== null;
+  const hasCinemeta = cinemeta !== null;
+  
+  // Determine best source for each field
+  const bestPoster = hasAllAnime && showDetails.thumbnail ? showDetails.thumbnail :
+                     hasCinemeta && cinemeta.poster ? cinemeta.poster : 
+                     anime.poster;
+  
+  const bestDescription = hasAllAnime && showDetails.description ? showDetails.description :
+                          hasCinemeta && cinemeta.description ? cinemeta.description :
+                          anime.description || '';
+  
+  const bestBackground = hasAllAnime && showDetails.banner ? showDetails.banner :
+                         hasCinemeta && cinemeta.background ? cinemeta.background :
+                         anime.background;
+  
+  const bestGenres = hasAllAnime && showDetails.genres ? showDetails.genres :
+                     hasCinemeta && cinemeta.genres ? cinemeta.genres :
+                     anime.genres || [];
+  
   const meta = {
     id: baseId,
     type: 'series',
-    // Name: prefer AllAnime english name, fallback to anime name
-    name: showDetails.englishName || showDetails.name || anime.name,
-    // Poster: use AllAnime if Cinemeta is missing or if we need enrichment
-    poster: (needsEnrichment || !anime.poster) ? (showDetails.thumbnail || anime.poster) : anime.poster,
-    // Background: prefer AllAnime banner
-    background: showDetails.banner || anime.background,
-    // Description: use AllAnime if Cinemeta has poor/missing description
-    description: stripHtml(
-      (needsEnrichment || !anime.description) 
-        ? (showDetails.description || anime.description || '')
-        : anime.description
-    ),
-    // Genres: merge from both sources
-    genres: showDetails.genres || anime.genres || [],
+    name: anime.name, // Keep original name for consistency
+    poster: bestPoster,
+    background: bestBackground,
+    description: stripHtml(bestDescription),
+    genres: bestGenres,
     runtime: anime.runtime,
     videos: episodes,
-    releaseInfo: anime.releaseInfo || (showDetails.status === 'Releasing' ? 'Ongoing' : showDetails.status)
+    releaseInfo: anime.releaseInfo || 
+                 (hasAllAnime && showDetails.status === 'Releasing' ? 'Ongoing' : 
+                  hasAllAnime ? showDetails.status : undefined)
   };
   
-  console.log(`Returning meta with ${episodes.length} episodes for ${meta.name}${needsEnrichment ? ' (enriched from AllAnime)' : ''}`);
+  const source = hasAllAnime ? (needsEnrichment ? 'AllAnime-enriched' : 'AllAnime+catalog') : 
+                 hasCinemeta ? 'Cinemeta-enriched' : 'catalog-only';
+  console.log(`Returning meta with ${episodes.length} episodes for ${meta.name} (${source})`);
   return { meta };
 }
 
