@@ -392,8 +392,8 @@ const HIDDEN_DUPLICATE_ENTRIES = new Set([
 
 // Manual poster overrides for anime with broken/missing metahub posters
 const POSTER_OVERRIDES = {
-  'tt38691315': 'https://media.kitsu.app/anime/48892/poster_image/large-5f88b3b77cc4e5e6b6c98de3f23f9a15.jpeg', // Style of Hiroshi Nohara Lunch
-  'tt35348212': 'https://media.kitsu.app/anime/48653/poster_image/large-0b6cd6119aaea15d1fbcf3f12e7bb1f2.jpeg', // Kaijuu Sekai Seifuku
+  'tt38691315': 'https://media.kitsu.app/anime/50202/poster_image/large-b0a51e52146b1d81d8d0924b5a8bbe82.jpeg', // Style of Hiroshi Nohara Lunch
+  'tt35348212': 'https://media.kitsu.app/anime/49843/poster_image/large-805a2f6fe1d62a8f6221dd07c7bce005.jpeg', // Kaijuu Sekai Seifuku (TV)
   // Add more overrides as needed
 };
 
