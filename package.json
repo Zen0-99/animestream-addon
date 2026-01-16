@@ -6,10 +6,16 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "build-db": "node scripts/build-database.js",
-    "build-db:test": "node scripts/build-database.js --test",
-    "update-db": "node scripts/update-database.js",
-    "update-db:dry": "node scripts/update-database.js --dry-run"
+    "build-db": "node scripts/build-database-v4.js",
+    "build-db:test": "node scripts/build-database-v4.js --test",
+    "incremental-update": "node scripts/incremental-update.js",
+    "incremental-update:dry": "node scripts/incremental-update.js --dry-run",
+    "incremental-update:qc": "node scripts/incremental-update.js --quality-control",
+    "incremental-update:new": "node scripts/incremental-update.js --new-anime",
+    "bulk-enrich": "node scripts/bulk-enrich-database.js",
+    "bulk-enrich:dry": "node scripts/bulk-enrich-database.js --dry-run",
+    "bulk-enrich:missing": "node scripts/bulk-enrich-database.js --missing-only",
+    "update-filters": "node scripts/update-filter-options.js"
   },
   "keywords": [
     "stremio",

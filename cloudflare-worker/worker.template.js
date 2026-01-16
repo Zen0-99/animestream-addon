@@ -280,9 +280,9 @@ function getManifest(showCounts = true) {
 
   return {
     id: 'community.animestream',
-    version: '1.2.0',
+    version: '1.0.0',
     name: 'AnimeStream',
-    description: 'Comprehensive anime catalog with 7,000+ titles. Streaming powered by AllAnime.',
+    description: 'Stream 7,000+ anime series and movies with powerful filtering by season, genre, airing day, and ratings. Sources are provided by AllAnime with both SUB and DUB options.',
     resources: ['catalog', 'stream'],
     types: ['anime', 'series', 'movie'],
     idPrefixes: ['tt'],
@@ -346,8 +346,8 @@ function getManifest(showCounts = true) {
       configurable: true,
       configurationRequired: false
     },
-    logo: 'https://i.imgur.com/t8iqMpT.png',
-    background: 'https://i.imgur.com/Y8hMtVt.jpg'
+    logo: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/main/public/logo.png',
+    background: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/main/public/logo.png'
   };
 }
 

@@ -350,6 +350,45 @@ async function fetchCatalogData() {
 
 // ===== HELPER FUNCTIONS =====
 
+// Get current anime season based on date
+function getCurrentSeason(date = new Date()) {
+  const month = date.getMonth() + 1; // 1-12
+  const year = date.getFullYear();
+  
+  let season;
+  if (month >= 1 && month <= 3) {
+    season = 'Winter';
+  } else if (month >= 4 && month <= 6) {
+    season = 'Spring';
+  } else if (month >= 7 && month <= 9) {
+    season = 'Summer';
+  } else {
+    season = 'Fall';
+  }
+  
+  return { year, season, display: `${year} - ${season}` };
+}
+
+// Check if a season is in the future
+function isFutureSeason(seasonYear, seasonName, currentSeason) {
+  const seasonOrder = { 'winter': 0, 'spring': 1, 'summer': 2, 'fall': 3 };
+  
+  if (seasonYear > currentSeason.year) return true;
+  if (seasonYear < currentSeason.year) return false;
+  
+  // Same year - compare season order
+  const currentOrder = seasonOrder[currentSeason.season.toLowerCase()];
+  const checkOrder = seasonOrder[seasonName.toLowerCase()];
+  
+  return checkOrder > currentOrder;
+}
+
+// Check if anime belongs to a future season
+function isUpcomingSeason(anime, currentSeason) {
+  if (!anime.year || !anime.season) return false;
+  return isFutureSeason(anime.year, anime.season, currentSeason);
+}
+
 function parseGenreFilter(genre) {
   if (!genre) return null;
   return genre.replace(/\s*\(\d+\)$/, '').trim();
@@ -390,23 +429,73 @@ const HIDDEN_DUPLICATE_ENTRIES = new Set([
   // Add more as needed
 ]);
 
+// Non-anime entries to filter from catalogs
+// These are Western animation, anime-inspired content, donghua (Chinese), or fan animations
+const NON_ANIME_BLACKLIST = new Set([
+  // Western Animation
+  'tt15248880', // Adventure Time: Fionna & Cake
+  'tt1305826',  // Adventure Time
+  'tt11126994', // Arcane
+  'tt8050756',  // The Owl House
+  'tt12895414', // The SpongeBob SquarePants Anime
+  'tt29661543', // #holoEN3DRepeat
+  'tt9362722',  // Spider-Man: Across the Spider-Verse
+  'tt4633694',  // Spider-Man: Into The Spider-Verse
+  'tt16360004', // Spider-Man: Beyond the Spider-Verse
+  'tt14205554', // K-POP DEMON HUNTERS (Netflix)
+  'tt0417299',  // Avatar: The Legend So Far
+  'tt3975938',  // The Legend of Korra Book 2
+  'tt13660822', // Avatar: Super Deformed Shorts
+  'tt16026746', // X-Men '97
+  'tt14069590', // DOTA: Dragon's Blood (Studio Mir)
+  'tt12605636', // Onyx Equinox (Crunchyroll Studios)
+  'tt8170404',  // Ballmastrz (Adult Swim)
+  'tt0127379',  // Johnny Cypher in Dimension Zero
+  'tt12588448', // Larva Island (Korean CGI)
+  'tt0934701',  // Ni Hao, Kai-Lan (Nickelodeon)
+  'tt10428604', // Magic: The Gathering (Netflix)
+  'tt0423746',  // Super Robot Monkey Team (Disney)
+  'tt2080922',  // Oscar's Oasis (French CGI)
+  'tt0077687',  // The Hobbit 1977 (Rankin/Bass)
+  'tt4499280',  // Solo: A Star Wars Story
+  'tt32915621', // Valoran Town (LoL, Chinese)
+  'tt28786861', // Justice League x RWBY Part 2 (DC/Rooster Teeth)
+  'tt4717402',  // MFKZ (French production)
+  
+  // Donghua (Chinese Animation) - not Japanese anime
+  'tt11755260', // The Daily Life of the Immortal King
+  'tt14986786', // Perfect World
+  'tt15788086', // Stellar Transformation
+  'tt19902148', // Throne of Seal
+  'tt27517921', // Against the Gods
+  'tt27432264', // Renegade Immortal
+  'tt30629237', // Wan Jie Qi Yuan
+  'tt37578217', // Ling Cage
+  'tt32801071', // Perfect World Movie
+  'tt20603126', // Thousands of worlds
+  'tt33968201', // Spring and Autumn
+  'tt15832382', // Hong Ling Jin Xia
+  'tt28863606', // God of Ten Thousand Realms
+  'tt6859260',  // The King's Avatar
+]);
+
 // Manual poster overrides for anime with broken/missing metahub posters
 const POSTER_OVERRIDES = {
   'tt38691315': 'https://media.kitsu.app/anime/50202/poster_image/large-b0a51e52146b1d81d8d0924b5a8bbe82.jpeg', // Style of Hiroshi Nohara Lunch
   'tt35348212': 'https://media.kitsu.app/anime/49843/poster_image/large-805a2f6fe1d62a8f6221dd07c7bce005.jpeg', // Kaijuu Sekai Seifuku (TV)
-  'tt12895414': 'https://media.kitsu.app/anime/poster_images/43801/large.jpg', // The SpongeBob SquarePants Anime
   'tt12787182': 'https://media.kitsu.app/anime/poster_images/43256/large.jpg', // Fushigi Dagashiya: Zenitendou
   'tt1978960': 'https://media.kitsu.app/anime/poster_images/5007/large.jpg', // Knyacki!
   'tt37776400': 'https://media.kitsu.app/anime/50096/poster_image/large-9ca5e6ff11832a8bf554697c1f183dbf.jpeg', // Dungeons & Television
   'tt37578217': 'https://media.kitsu.app/anime/poster_images/43617/large.jpg', // Ling Cage
   'tt37894464': 'https://media.kitsu.app/anime/49649/poster_image/large-37718e736a76ba0e3d01beb64ad80866.jpeg', // Let's Roll, Cinnamoroll!
   'tt37509404': 'https://media.kitsu.app/anime/49961/poster_image/large-3f376bc5492dd5de03c4d13295604f95.jpeg', // Gekkan! Nanmono Anime
-  'tt29661543': 'https://media.kitsu.app/anime/47617/poster_image/large-40aa34b09277d1ec2f34c52e83b6538d.jpeg', // #holoEN3DRepeat
   'tt39281420': 'https://media.kitsu.app/anime/50253/poster_image/large-5c560f04c35705e046a945dfc5c5227f.jpeg', // Koala's Diary
   'tt37836273': 'https://cdn.myanimelist.net/images/anime/1260/150826l.jpg', // Shuukan Ranobe Anime (from MAL)
   'tt36270770': 'https://media.kitsu.app/anime/46581/poster_image/large-eb771819d7a6a152d1925f297bcf1928.jpeg', // ROAD OF NARUTO
   'tt27551813': 'https://cdn.myanimelist.net/images/anime/1921/135489l.jpg', // Idol (from MAL)
   'tt39287518': 'https://media.kitsu.app/anime/49998/poster_image/large-16edb06a60a6644010b55d4df6a2012a.jpeg', // Kaguya-sama Stairway
+  'tt37196939': 'https://media.kitsu.app/anime/49966/poster_image/large-420c08752313cc1ad419f79aa4621a8d.jpeg', // Wash it All Away
+  'tt39050141': 'https://media.kitsu.app/anime/50371/poster_image/large-e9aaad3342085603c1e3d2667a5954ab.jpeg', // Love Through A Prism
 };
 
 // Manual metadata overrides for anime with incomplete catalog data
@@ -503,10 +592,6 @@ const METADATA_OVERRIDES = {
     background: 'https://cdn.myanimelist.net/images/anime/1987/152302l.jpg',
     cast: ["Uchida, Aya","Uchida, Aya","Uchida, Aya","Uchida, Aya"],
   },
-  'tt12895414': { // Auto-generated
-    genres: ["Violence","Action","Anthropomorphism","Shounen","Drama","Anime Influenced"],
-    background: 'https://cdn.myanimelist.net/images/anime/1257/152759l.jpg',
-  },
   'tt1978960': { // Auto-generated
     background: 'https://cdn.myanimelist.net/images/anime/2/55107l.jpg',
   },
@@ -524,9 +609,6 @@ const METADATA_OVERRIDES = {
     runtime: '24 min',
     rating: 6.55,
     description: 'Reboot of the 80s anime Samurai Troopers (Ronin Warriors).',
-  },
-  'tt29661543': { // Auto-generated
-    genres: ["Idol","Comedy","Anime Influenced","Fantasy","Cooking"],
   },
   'tt34852231': { // Auto-generated
     runtime: '25 min',
@@ -714,6 +796,11 @@ function isHiddenDuplicate(anime) {
   return HIDDEN_DUPLICATE_ENTRIES.has(anime.id);
 }
 
+function isNonAnime(anime) {
+  const id = anime.id || anime.imdb_id;
+  return NON_ANIME_BLACKLIST.has(id);
+}
+
 function isMovieType(anime) {
   if (anime.subtype === 'movie') return true;
   let runtime = anime.runtime;
@@ -750,13 +837,20 @@ function formatAnimeMeta(anime) {
     formatted.description = formatted.description.substring(0, 200) + '...';
   }
   
-  // Poster priority: 1) Manual override, 2) Metahub (Cinemeta), 3) Catalog (Kitsu)
+  // Poster priority:
+  // 1) Manual override
+  // 2) For recent anime (2025+), use catalog poster (Kitsu) as Metahub often doesn't have them
+  // 3) For older anime with IMDB ID, use Metahub (better CDN)
+  // 4) Fallback to catalog poster
   if (POSTER_OVERRIDES[anime.id]) {
     formatted.poster = POSTER_OVERRIDES[anime.id];
+  } else if (anime.year && anime.year >= 2025) {
+    // Keep catalog poster for recent anime - Metahub may not have them
+    // formatted.poster already set from anime object
   } else if (anime.id && anime.id.startsWith('tt')) {
     formatted.poster = `https://images.metahub.space/poster/medium/${anime.id}/img`;
   }
-  // If no IMDB ID, keep the catalog poster (Kitsu)
+  // If no IMDB ID or recent year, keep the catalog poster (Kitsu)
   
   return formatted;
 }
@@ -773,6 +867,7 @@ function searchDatabase(catalogData, query, targetType = null) {
   
   for (const anime of catalogData) {
     if (isHiddenDuplicate(anime)) continue;
+    if (isNonAnime(anime)) continue;
     if (targetType === 'series' && !isSeriesType(anime)) continue;
     if (targetType === 'movie' && !isMovieType(anime)) continue;
     
@@ -819,7 +914,7 @@ function searchDatabase(catalogData, query, targetType = null) {
 // ===== CATALOG HANDLERS =====
 
 function handleTopRated(catalogData, genreFilter, config) {
-  let filtered = catalogData.filter(anime => isSeriesType(anime) && !isHiddenDuplicate(anime));
+  let filtered = catalogData.filter(anime => isSeriesType(anime) && !isHiddenDuplicate(anime) && !isNonAnime(anime));
   
   if (genreFilter) {
     const genre = parseGenreFilter(genreFilter);
@@ -835,26 +930,56 @@ function handleTopRated(catalogData, genreFilter, config) {
 }
 
 function handleSeasonReleases(catalogData, seasonFilter) {
-  let filtered = catalogData.filter(anime => isSeriesType(anime) && !isHiddenDuplicate(anime));
+  let filtered = catalogData.filter(anime => isSeriesType(anime) && !isHiddenDuplicate(anime) && !isNonAnime(anime));
+  
+  const currentSeason = getCurrentSeason();
   
   if (seasonFilter) {
-    const parsed = parseSeasonFilter(seasonFilter);
-    if (parsed) {
+    const cleanFilter = seasonFilter.replace(/\s*\(\d+\)$/, '').trim();
+    
+    // Handle "Upcoming" filter - all future seasons
+    if (cleanFilter.toLowerCase() === 'upcoming') {
       filtered = filtered.filter(anime => {
-        if (!anime.year) return false;
-        if (anime.year !== parsed.year) return false;
-        return true;
+        if (!anime.year || !anime.season) return false;
+        return isUpcomingSeason(anime, currentSeason);
       });
+    } else {
+      // Handle specific season filter (e.g., "2026 - Winter")
+      const parsed = parseSeasonFilter(seasonFilter);
+      if (parsed) {
+        filtered = filtered.filter(anime => {
+          if (!anime.year) return false;
+          if (anime.year !== parsed.year) return false;
+          // Also check season matches if we have that data
+          if (anime.season && parsed.season) {
+            return anime.season.toLowerCase() === parsed.season.toLowerCase();
+          }
+          return true;
+        });
+      }
     }
+  } else {
+    // No filter - show current season by default
+    filtered = filtered.filter(anime => {
+      if (!anime.year || !anime.season) return false;
+      return anime.year === currentSeason.year && 
+             anime.season.toLowerCase() === currentSeason.season.toLowerCase();
+    });
   }
   
-  filtered.sort((a, b) => (b.year || 0) - (a.year || 0));
+  // Sort by rating, with newer anime prioritized
+  filtered.sort((a, b) => {
+    // First by year (newer first)
+    if ((b.year || 0) !== (a.year || 0)) return (b.year || 0) - (a.year || 0);
+    // Then by rating
+    return (b.rating || 0) - (a.rating || 0);
+  });
   return filtered;
 }
 
 function handleAiring(catalogData, genreFilter, config) {
   let filtered = catalogData.filter(anime => 
-    anime.status === 'ONGOING' && isSeriesType(anime) && !isHiddenDuplicate(anime)
+    anime.status === 'ONGOING' && isSeriesType(anime) && !isHiddenDuplicate(anime) && !isNonAnime(anime)
   );
   
   // Apply exclude long-running filter
@@ -886,7 +1011,7 @@ function handleAiring(catalogData, genreFilter, config) {
 }
 
 function handleMovies(catalogData, genreFilter) {
-  let filtered = catalogData.filter(anime => isMovieType(anime) && !isHiddenDuplicate(anime));
+  let filtered = catalogData.filter(anime => isMovieType(anime) && !isHiddenDuplicate(anime) && !isNonAnime(anime));
   
   if (genreFilter) {
     const cleanFilter = parseGenreFilter(genreFilter);
@@ -918,16 +1043,91 @@ function handleMovies(catalogData, genreFilter) {
   return filtered;
 }
 
+// Generate season options dynamically based on current date
+// Shows current season first, then past seasons, with "Upcoming" for all future
+function generateSeasonOptions(filterOptions, currentSeason, showCounts, catalogData) {
+  const seasonOrder = ['winter', 'spring', 'summer', 'fall'];
+  const options = [];
+  
+  // Count anime per season if we have catalog data
+  const seasonCounts = {};
+  let upcomingCount = 0;
+  
+  if (catalogData && showCounts) {
+    for (const anime of catalogData) {
+      if (!anime.year || !anime.season) continue;
+      if (!isSeriesType(anime) || isHiddenDuplicate(anime) || isNonAnime(anime)) continue;
+      
+      if (isUpcomingSeason(anime, currentSeason)) {
+        upcomingCount++;
+      } else {
+        // Normalize season to title case for consistent counting
+        const normalizedSeason = anime.season.charAt(0).toUpperCase() + anime.season.slice(1).toLowerCase();
+        const key = `${anime.year} - ${normalizedSeason}`;
+        seasonCounts[key] = (seasonCounts[key] || 0) + 1;
+      }
+    }
+  }
+  
+  // Add "Upcoming" FIRST at the top of the list
+  if (showCounts) {
+    options.push(`Upcoming (${upcomingCount})`);
+  } else {
+    options.push('Upcoming');
+  }
+  
+  // Add current season
+  const currentKey = `${currentSeason.year} - ${currentSeason.season}`;
+  if (showCounts && seasonCounts[currentKey]) {
+    options.push(`${currentKey} (${seasonCounts[currentKey]})`);
+  } else if (showCounts) {
+    options.push(`${currentKey} (0)`);
+  } else {
+    options.push(currentKey);
+  }
+  
+  // Add past seasons (go back through recent years)
+  const pastSeasons = [];
+  let year = currentSeason.year;
+  let seasonIdx = seasonOrder.indexOf(currentSeason.season.toLowerCase());
+  
+  // Go back through past seasons (up to 20 entries)
+  for (let i = 0; i < 20; i++) {
+    seasonIdx--;
+    if (seasonIdx < 0) {
+      seasonIdx = 3; // Fall
+      year--;
+    }
+    
+    const seasonName = seasonOrder[seasonIdx].charAt(0).toUpperCase() + seasonOrder[seasonIdx].slice(1);
+    const key = `${year} - ${seasonName}`;
+    const count = seasonCounts[key] || 0;
+    
+    if (count > 0 || year >= currentSeason.year - 2) {
+      if (showCounts) {
+        pastSeasons.push(`${key} (${count})`);
+      } else {
+        pastSeasons.push(key);
+      }
+    }
+  }
+  
+  options.push(...pastSeasons);
+  
+  return options;
+}
+
 // ===== MANIFEST =====
 
-function getManifest(filterOptions, showCounts = true) {
+function getManifest(filterOptions, showCounts = true, catalogData = null) {
   const genreOptions = showCounts && filterOptions.genres?.withCounts 
     ? filterOptions.genres.withCounts.filter(g => !g.toLowerCase().startsWith('animation'))
     : (filterOptions.genres?.list || []).filter(g => g.toLowerCase() !== 'animation');
   
-  const seasonOptions = showCounts && filterOptions.seasons?.withCounts 
-    ? filterOptions.seasons.withCounts 
-    : (filterOptions.seasons?.list || []);
+  // Generate dynamic season options based on current date
+  // Shows: Current season + past seasons, with "Upcoming" for all future seasons
+  const currentSeason = getCurrentSeason();
+  const seasonOptions = generateSeasonOptions(filterOptions, currentSeason, showCounts, catalogData);
   
   const weekdayOptions = showCounts && filterOptions.weekdays?.withCounts 
     ? filterOptions.weekdays.withCounts 
@@ -939,9 +1139,9 @@ function getManifest(filterOptions, showCounts = true) {
 
   return {
     id: 'community.animestream',
-    version: '1.4.0',
+    version: '1.0.0',
     name: 'AnimeStream',
-    description: 'Comprehensive anime catalog with 7,000+ titles. Streaming powered by AllAnime.',
+    description: 'Stream 7,000+ anime series and movies with powerful filtering by season, genre, airing day, and ratings. Sources are provided by AllAnime with both SUB and DUB options.',
     // CRITICAL: Use explicit resource objects with types and idPrefixes
     // for Stremio to properly route stream requests
     resources: [
@@ -1019,8 +1219,8 @@ function getManifest(filterOptions, showCounts = true) {
       configurable: true,
       configurationRequired: false
     },
-    logo: 'https://i.imgur.com/t8iqMpT.png',
-    background: 'https://i.imgur.com/Y8hMtVt.jpg'
+    logo: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/main/public/logo.png',
+    background: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/main/public/logo.png'
   };
 }
 
@@ -1395,6 +1595,45 @@ async function handleMeta(catalog, type, id) {
   return { meta };
 }
 
+// ===== STREAM SERVING CONFIGURATION =====
+// To reduce server load, we only serve AllAnime streams for:
+// 1. Currently airing anime (status: ONGOING)
+// 2. For long-running anime (100+ episodes), only the newest 3 episodes
+// Older/completed anime have plenty of other sources (Torrentio, etc.)
+
+const LONG_RUNNING_THRESHOLD = 100; // Episodes
+const MAX_EPISODES_FOR_LONG_RUNNING = 3; // Only serve newest N episodes
+
+function shouldServeAllAnimeStream(anime, requestedEpisode) {
+  // If not in our catalog, we can't determine status - allow stream
+  if (!anime) return { allowed: true, reason: 'not in catalog' };
+  
+  // Only serve streams for currently airing anime
+  if (anime.status !== 'ONGOING') {
+    return { 
+      allowed: false, 
+      reason: 'not_airing',
+      message: 'This anime is no longer airing. Use Torrentio or other addons for completed series.'
+    };
+  }
+  
+  // For long-running anime, only serve newest 3 episodes
+  const totalEpisodes = anime.episodeCount || anime.episodes || 0;
+  if (totalEpisodes >= LONG_RUNNING_THRESHOLD) {
+    const oldestAllowedEpisode = Math.max(1, totalEpisodes - MAX_EPISODES_FOR_LONG_RUNNING + 1);
+    
+    if (requestedEpisode < oldestAllowedEpisode) {
+      return {
+        allowed: false,
+        reason: 'long_running_old_episode',
+        message: `For long-running series, only episodes ${oldestAllowedEpisode}-${totalEpisodes} are available. Use Torrentio for older episodes.`
+      };
+    }
+  }
+  
+  return { allowed: true, reason: 'airing' };
+}
+
 // Handle stream requests (using direct API)
 async function handleStream(catalog, type, id) {
   // Decode URL-encoded ID first (Stremio sometimes sends %3A instead of :)
@@ -1411,6 +1650,21 @@ async function handleStream(catalog, type, id) {
   // Find anime in catalog (supports tt*, mal-*, kitsu:* IDs)
   let anime = findAnimeById(catalog, baseId);
   let showId = null;
+  
+  // Check if we should serve AllAnime streams for this anime
+  // This reduces server load by only serving streams for currently airing anime
+  const streamCheck = shouldServeAllAnimeStream(anime, episode);
+  if (!streamCheck.allowed) {
+    console.log(`Stream not served: ${streamCheck.reason} - ${anime?.name || baseId}`);
+    // Return a helpful message to the user
+    return { 
+      streams: [{
+        name: 'AnimeStream',
+        title: `⚠️ ${streamCheck.message}`,
+        externalUrl: 'https://stremio.com' // Fallback URL
+      }]
+    };
+  }
   
   // If not in catalog and it's an IMDB ID, try Cinemeta
   if (!anime && baseId.startsWith('tt')) {
@@ -1570,7 +1824,7 @@ export default {
     const manifestMatch = path.match(/^(?:\/([^\/]+))?\/manifest\.json$/);
     if (manifestMatch) {
       const config = parseConfig(manifestMatch[1]);
-      return new Response(JSON.stringify(getManifest(filterOptions, config.showCounts)), { headers: JSON_HEADERS });
+      return new Response(JSON.stringify(getManifest(filterOptions, config.showCounts, catalog)), { headers: JSON_HEADERS });
     }
     
     const catalogMatch = path.match(/^(?:\/([^\/]+))?\/catalog\/([^\/]+)\/([^\/]+)(?:\/(.+))?\.json$/);

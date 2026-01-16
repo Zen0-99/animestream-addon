@@ -3,7 +3,7 @@
     "withCounts": [
       "Animation (5844)",
       "Comedy (3225)",
-      "Action (2676)",
+      "Action (2677)",
       "Adventure (2259)",
       "Drama (2120)",
       "Fantasy (1676)",
@@ -11,9 +11,9 @@
       "Romance (1066)",
       "Sci-Fi & Fantasy (936)",
       "Action & Adventure (798)",
-      "School (726)",
+      "School (727)",
+      "Supernatural (656)",
       "Slice of Life (656)",
-      "Supernatural (655)",
       "Kids (632)",
       "Mecha (593)",
       "Mystery (530)",
@@ -88,7 +88,7 @@
       },
       {
         "name": "Action",
-        "count": 2676
+        "count": 2677
       },
       {
         "name": "Adventure",
@@ -120,15 +120,15 @@
       },
       {
         "name": "School",
-        "count": 726
+        "count": 727
+      },
+      {
+        "name": "Supernatural",
+        "count": 656
       },
       {
         "name": "Slice of Life",
         "count": 656
-      },
-      {
-        "name": "Supernatural",
-        "count": 655
       },
       {
         "name": "Kids",
@@ -380,1637 +380,6 @@
       }
     ]
   },
-  "seasons": {
-    "withCounts": [
-      "2027 - Fall (2)",
-      "2027 - Spring (1)",
-      "2026 - Fall (14)",
-      "2026 - Summer (1)",
-      "2026 - Spring (6)",
-      "2026 - Winter (37)",
-      "2025 - Fall (45)",
-      "2025 - Summer (55)",
-      "2025 - Spring (62)",
-      "2025 - Winter (56)",
-      "2024 - Fall (49)",
-      "2024 - Summer (62)",
-      "2024 - Spring (72)",
-      "2024 - Winter (53)",
-      "2023 - Fall (75)",
-      "2023 - Summer (58)",
-      "2023 - Spring (72)",
-      "2023 - Winter (53)",
-      "2022 - Fall (64)",
-      "2022 - Summer (66)",
-      "2022 - Spring (55)",
-      "2022 - Winter (61)",
-      "2021 - Fall (71)",
-      "2021 - Summer (63)",
-      "2021 - Spring (77)",
-      "2021 - Winter (74)",
-      "2020 - Fall (70)",
-      "2020 - Summer (45)",
-      "2020 - Spring (54)",
-      "2020 - Winter (58)",
-      "2019 - Fall (66)",
-      "2019 - Summer (65)",
-      "2019 - Spring (59)",
-      "2019 - Winter (56)",
-      "2018 - Fall (69)",
-      "2018 - Summer (74)",
-      "2018 - Spring (71)",
-      "2018 - Winter (65)",
-      "2017 - Fall (68)",
-      "2017 - Summer (73)",
-      "2017 - Spring (60)",
-      "2017 - Winter (54)",
-      "2016 - Fall (77)",
-      "2016 - Summer (72)",
-      "2016 - Spring (73)",
-      "2016 - Winter (60)",
-      "2015 - Fall (77)",
-      "2015 - Summer (61)",
-      "2015 - Spring (56)",
-      "2015 - Winter (32)",
-      "2014 - Fall (65)",
-      "2014 - Summer (65)",
-      "2014 - Spring (61)",
-      "2014 - Winter (64)",
-      "2013 - Fall (55)",
-      "2013 - Summer (53)",
-      "2013 - Spring (48)",
-      "2013 - Winter (52)",
-      "2012 - Fall (64)",
-      "2012 - Summer (61)",
-      "2012 - Spring (51)",
-      "2012 - Winter (56)",
-      "2011 - Fall (45)",
-      "2011 - Summer (48)",
-      "2011 - Spring (48)",
-      "2011 - Winter (42)",
-      "2010 - Fall (52)",
-      "2010 - Summer (40)",
-      "2010 - Spring (38)",
-      "2010 - Winter (46)",
-      "2009 - Fall (46)",
-      "2009 - Summer (40)",
-      "2009 - Spring (53)",
-      "2009 - Winter (39)",
-      "2008 - Fall (49)",
-      "2008 - Summer (41)",
-      "2008 - Spring (50)",
-      "2008 - Winter (36)",
-      "2007 - Fall (49)",
-      "2007 - Summer (33)",
-      "2007 - Spring (59)",
-      "2007 - Winter (47)",
-      "2006 - Fall (51)",
-      "2006 - Summer (49)",
-      "2006 - Spring (59)",
-      "2006 - Winter (40)",
-      "2005 - Fall (50)",
-      "2005 - Summer (40)",
-      "2005 - Spring (45)",
-      "2005 - Winter (37)",
-      "2004 - Fall (42)",
-      "2004 - Summer (28)",
-      "2004 - Spring (41)",
-      "2004 - Winter (34)",
-      "2003 - Fall (41)",
-      "2003 - Summer (29)",
-      "2003 - Spring (47)",
-      "2003 - Winter (29)",
-      "2002 - Fall (36)",
-      "2002 - Summer (30)",
-      "2002 - Spring (30)",
-      "2002 - Winter (38)",
-      "2001 - Fall (35)",
-      "2001 - Summer (29)",
-      "2001 - Spring (37)",
-      "2001 - Winter (24)",
-      "2000 - Fall (27)",
-      "2000 - Summer (19)",
-      "2000 - Spring (20)",
-      "2000 - Winter (24)",
-      "1999 - Fall (27)",
-      "1999 - Summer (32)",
-      "1999 - Spring (29)",
-      "1999 - Winter (25)",
-      "1998 - Fall (26)",
-      "1998 - Summer (17)",
-      "1998 - Spring (34)",
-      "1998 - Winter (21)",
-      "1997 - Fall (15)",
-      "1997 - Summer (22)",
-      "1997 - Spring (26)",
-      "1997 - Winter (19)",
-      "1996 - Fall (25)",
-      "1996 - Summer (18)",
-      "1996 - Spring (21)",
-      "1996 - Winter (28)",
-      "1995 - Fall (21)",
-      "1995 - Summer (17)",
-      "1995 - Spring (32)",
-      "1995 - Winter (15)",
-      "1994 - Fall (22)",
-      "1994 - Summer (25)",
-      "1994 - Spring (26)",
-      "1994 - Winter (17)",
-      "1993 - Fall (20)",
-      "1993 - Summer (27)",
-      "1993 - Spring (21)",
-      "1993 - Winter (23)",
-      "1992 - Fall (26)",
-      "1992 - Summer (37)",
-      "1992 - Spring (13)",
-      "1992 - Winter (24)",
-      "1991 - Fall (20)",
-      "1991 - Summer (35)",
-      "1991 - Spring (20)",
-      "1991 - Winter (28)",
-      "1990 - Fall (17)",
-      "1990 - Summer (22)",
-      "1990 - Spring (18)",
-      "1990 - Winter (31)",
-      "1989 - Fall (27)",
-      "1989 - Summer (20)",
-      "1989 - Spring (22)",
-      "1989 - Winter (23)",
-      "1988 - Fall (20)",
-      "1988 - Summer (17)",
-      "1988 - Spring (16)",
-      "1988 - Winter (19)",
-      "1987 - Fall (26)",
-      "1987 - Summer (17)",
-      "1987 - Spring (16)",
-      "1987 - Winter (23)",
-      "1986 - Fall (22)",
-      "1986 - Summer (23)",
-      "1986 - Spring (11)",
-      "1986 - Winter (26)",
-      "1985 - Fall (21)",
-      "1985 - Summer (17)",
-      "1985 - Spring (7)",
-      "1985 - Winter (22)",
-      "1984 - Fall (9)",
-      "1984 - Summer (14)",
-      "1984 - Spring (8)",
-      "1984 - Winter (20)",
-      "1983 - Fall (12)",
-      "1983 - Summer (11)",
-      "1983 - Spring (14)",
-      "1983 - Winter (19)",
-      "1982 - Fall (11)",
-      "1982 - Summer (9)",
-      "1982 - Spring (9)",
-      "1982 - Winter (11)",
-      "1981 - Fall (14)",
-      "1981 - Summer (12)",
-      "1981 - Spring (8)",
-      "1981 - Winter (15)",
-      "1980 - Fall (6)",
-      "1980 - Summer (9)",
-      "1980 - Spring (9)",
-      "1980 - Winter (15)",
-      "1979 - Fall (10)",
-      "1979 - Summer (9)",
-      "1979 - Spring (6)",
-      "1979 - Winter (15)",
-      "1978 - Fall (4)",
-      "1978 - Summer (8)",
-      "1978 - Spring (7)",
-      "1978 - Winter (7)",
-      "1977 - Fall (9)",
-      "1977 - Summer (7)",
-      "1977 - Spring (4)",
-      "1977 - Winter (7)",
-      "1976 - Fall (6)",
-      "1976 - Summer (3)",
-      "1976 - Spring (4)",
-      "1976 - Winter (5)",
-      "1975 - Fall (6)",
-      "1975 - Summer (3)",
-      "1975 - Spring (6)",
-      "1975 - Winter (3)",
-      "1974 - Fall (7)",
-      "1974 - Summer (3)",
-      "1974 - Spring (4)",
-      "1974 - Winter (4)",
-      "1973 - Fall (5)",
-      "1973 - Summer (1)",
-      "1973 - Spring (2)",
-      "1973 - Winter (6)",
-      "1972 - Fall (7)",
-      "1972 - Summer (2)",
-      "1972 - Spring (3)",
-      "1972 - Winter (6)",
-      "1971 - Fall (5)",
-      "1971 - Summer (2)",
-      "1971 - Winter (3)",
-      "1970 - Fall (3)",
-      "1970 - Summer (3)",
-      "1970 - Spring (4)",
-      "1970 - Winter (5)",
-      "1969 - Fall (6)",
-      "1969 - Summer (3)",
-      "1969 - Spring (2)",
-      "1969 - Winter (3)",
-      "1968 - Fall (5)",
-      "1968 - Summer (2)",
-      "1968 - Spring (4)",
-      "1968 - Winter (4)",
-      "1967 - Fall (1)",
-      "1967 - Summer (3)",
-      "1967 - Spring (3)",
-      "1967 - Winter (5)",
-      "1966 - Fall (2)",
-      "1966 - Summer (3)",
-      "1966 - Spring (2)",
-      "1966 - Winter (1)",
-      "1965 - Fall (2)",
-      "1965 - Spring (3)",
-      "1965 - Winter (2)",
-      "1964 - Summer (3)",
-      "1964 - Winter (4)",
-      "1963 - Fall (4)",
-      "1963 - Summer (1)",
-      "1963 - Winter (3)",
-      "1962 - Fall (2)",
-      "1962 - Summer (1)",
-      "1962 - Spring (1)",
-      "1961 - Summer (1)",
-      "1961 - Spring (1)",
-      "1961 - Winter (1)",
-      "1960 - Summer (1)",
-      "1959 - Spring (1)",
-      "1959 - Winter (2)",
-      "1958 - Fall (1)",
-      "1957 - Spring (1)",
-      "1956 - Fall (1)",
-      "1956 - Summer (1)",
-      "1956 - Spring (1)",
-      "1954 - Fall (1)",
-      "1954 - Spring (1)",
-      "1953 - Summer (1)",
-      "1952 - Fall (1)",
-      "1951 - Winter (1)",
-      "1950 - Winter (2)",
-      "1949 - Fall (1)",
-      "1949 - Spring (1)",
-      "1948 - Fall (1)",
-      "1948 - Winter (2)",
-      "1947 - Winter (1)",
-      "1946 - Winter (3)",
-      "1945 - Spring (1)",
-      "1943 - Summer (1)",
-      "1943 - Spring (1)",
-      "1943 - Winter (1)",
-      "1942 - Winter (3)",
-      "1941 - Winter (2)",
-      "1940 - Summer (1)",
-      "1940 - Spring (1)",
-      "1940 - Winter (1)",
-      "1939 - Summer (1)",
-      "1939 - Winter (1)",
-      "1938 - Fall (1)",
-      "1937 - Fall (1)",
-      "1936 - Fall (1)",
-      "1936 - Winter (8)",
-      "1935 - Fall (1)",
-      "1935 - Summer (1)",
-      "1935 - Spring (1)",
-      "1935 - Winter (6)",
-      "1934 - Summer (2)",
-      "1934 - Spring (3)",
-      "1934 - Winter (3)",
-      "1933 - Fall (3)",
-      "1933 - Spring (2)",
-      "1933 - Winter (5)",
-      "1932 - Fall (1)",
-      "1932 - Winter (3)",
-      "1931 - Fall (1)",
-      "1931 - Winter (11)",
-      "1930 - Spring (1)",
-      "1930 - Winter (1)",
-      "1929 - Winter (3)",
-      "1928 - Summer (2)",
-      "1928 - Spring (1)",
-      "1928 - Winter (2)",
-      "1927 - Winter (2)",
-      "1926 - Fall (1)",
-      "1926 - Winter (1)",
-      "1925 - Winter (2)",
-      "1924 - Winter (3)",
-      "1918 - Summer (1)",
-      "1918 - Winter (6)",
-      "1917 - Fall (4)",
-      "1917 - Summer (3)",
-      "1917 - Spring (2)",
-      "1917 - Winter (2)"
-    ],
-    "list": [
-      {
-        "name": "2027 - Spring",
-        "count": 1
-      },
-      {
-        "name": "2027 - Fall",
-        "count": 2
-      },
-      {
-        "name": "2026 - Winter",
-        "count": 37
-      },
-      {
-        "name": "2026 - Summer",
-        "count": 1
-      },
-      {
-        "name": "2026 - Spring",
-        "count": 6
-      },
-      {
-        "name": "2026 - Fall",
-        "count": 14
-      },
-      {
-        "name": "2025 - Winter",
-        "count": 56
-      },
-      {
-        "name": "2025 - Summer",
-        "count": 55
-      },
-      {
-        "name": "2025 - Spring",
-        "count": 62
-      },
-      {
-        "name": "2025 - Fall",
-        "count": 45
-      },
-      {
-        "name": "2024 - Winter",
-        "count": 53
-      },
-      {
-        "name": "2024 - Summer",
-        "count": 62
-      },
-      {
-        "name": "2024 - Spring",
-        "count": 72
-      },
-      {
-        "name": "2024 - Fall",
-        "count": 49
-      },
-      {
-        "name": "2023 - Winter",
-        "count": 53
-      },
-      {
-        "name": "2023 - Summer",
-        "count": 58
-      },
-      {
-        "name": "2023 - Spring",
-        "count": 72
-      },
-      {
-        "name": "2023 - Fall",
-        "count": 75
-      },
-      {
-        "name": "2022 - Winter",
-        "count": 61
-      },
-      {
-        "name": "2022 - Summer",
-        "count": 66
-      },
-      {
-        "name": "2022 - Spring",
-        "count": 55
-      },
-      {
-        "name": "2022 - Fall",
-        "count": 64
-      },
-      {
-        "name": "2021 - Winter",
-        "count": 74
-      },
-      {
-        "name": "2021 - Summer",
-        "count": 63
-      },
-      {
-        "name": "2021 - Spring",
-        "count": 77
-      },
-      {
-        "name": "2021 - Fall",
-        "count": 71
-      },
-      {
-        "name": "2020 - Winter",
-        "count": 58
-      },
-      {
-        "name": "2020 - Summer",
-        "count": 45
-      },
-      {
-        "name": "2020 - Spring",
-        "count": 54
-      },
-      {
-        "name": "2020 - Fall",
-        "count": 70
-      },
-      {
-        "name": "2019 - Winter",
-        "count": 56
-      },
-      {
-        "name": "2019 - Summer",
-        "count": 65
-      },
-      {
-        "name": "2019 - Spring",
-        "count": 59
-      },
-      {
-        "name": "2019 - Fall",
-        "count": 66
-      },
-      {
-        "name": "2018 - Winter",
-        "count": 65
-      },
-      {
-        "name": "2018 - Summer",
-        "count": 74
-      },
-      {
-        "name": "2018 - Spring",
-        "count": 71
-      },
-      {
-        "name": "2018 - Fall",
-        "count": 69
-      },
-      {
-        "name": "2017 - Winter",
-        "count": 54
-      },
-      {
-        "name": "2017 - Summer",
-        "count": 73
-      },
-      {
-        "name": "2017 - Spring",
-        "count": 60
-      },
-      {
-        "name": "2017 - Fall",
-        "count": 68
-      },
-      {
-        "name": "2016 - Winter",
-        "count": 60
-      },
-      {
-        "name": "2016 - Summer",
-        "count": 72
-      },
-      {
-        "name": "2016 - Spring",
-        "count": 73
-      },
-      {
-        "name": "2016 - Fall",
-        "count": 77
-      },
-      {
-        "name": "2015 - Winter",
-        "count": 32
-      },
-      {
-        "name": "2015 - Summer",
-        "count": 61
-      },
-      {
-        "name": "2015 - Spring",
-        "count": 56
-      },
-      {
-        "name": "2015 - Fall",
-        "count": 77
-      },
-      {
-        "name": "2014 - Winter",
-        "count": 64
-      },
-      {
-        "name": "2014 - Summer",
-        "count": 65
-      },
-      {
-        "name": "2014 - Spring",
-        "count": 61
-      },
-      {
-        "name": "2014 - Fall",
-        "count": 65
-      },
-      {
-        "name": "2013 - Winter",
-        "count": 52
-      },
-      {
-        "name": "2013 - Summer",
-        "count": 53
-      },
-      {
-        "name": "2013 - Spring",
-        "count": 48
-      },
-      {
-        "name": "2013 - Fall",
-        "count": 55
-      },
-      {
-        "name": "2012 - Winter",
-        "count": 56
-      },
-      {
-        "name": "2012 - Summer",
-        "count": 61
-      },
-      {
-        "name": "2012 - Spring",
-        "count": 51
-      },
-      {
-        "name": "2012 - Fall",
-        "count": 64
-      },
-      {
-        "name": "2011 - Winter",
-        "count": 42
-      },
-      {
-        "name": "2011 - Summer",
-        "count": 48
-      },
-      {
-        "name": "2011 - Spring",
-        "count": 48
-      },
-      {
-        "name": "2011 - Fall",
-        "count": 45
-      },
-      {
-        "name": "2010 - Winter",
-        "count": 46
-      },
-      {
-        "name": "2010 - Summer",
-        "count": 40
-      },
-      {
-        "name": "2010 - Spring",
-        "count": 38
-      },
-      {
-        "name": "2010 - Fall",
-        "count": 52
-      },
-      {
-        "name": "2009 - Winter",
-        "count": 39
-      },
-      {
-        "name": "2009 - Summer",
-        "count": 40
-      },
-      {
-        "name": "2009 - Spring",
-        "count": 53
-      },
-      {
-        "name": "2009 - Fall",
-        "count": 46
-      },
-      {
-        "name": "2008 - Winter",
-        "count": 36
-      },
-      {
-        "name": "2008 - Summer",
-        "count": 41
-      },
-      {
-        "name": "2008 - Spring",
-        "count": 50
-      },
-      {
-        "name": "2008 - Fall",
-        "count": 49
-      },
-      {
-        "name": "2007 - Winter",
-        "count": 47
-      },
-      {
-        "name": "2007 - Summer",
-        "count": 33
-      },
-      {
-        "name": "2007 - Spring",
-        "count": 59
-      },
-      {
-        "name": "2007 - Fall",
-        "count": 49
-      },
-      {
-        "name": "2006 - Winter",
-        "count": 40
-      },
-      {
-        "name": "2006 - Summer",
-        "count": 49
-      },
-      {
-        "name": "2006 - Spring",
-        "count": 59
-      },
-      {
-        "name": "2006 - Fall",
-        "count": 51
-      },
-      {
-        "name": "2005 - Winter",
-        "count": 37
-      },
-      {
-        "name": "2005 - Summer",
-        "count": 40
-      },
-      {
-        "name": "2005 - Spring",
-        "count": 45
-      },
-      {
-        "name": "2005 - Fall",
-        "count": 50
-      },
-      {
-        "name": "2004 - Winter",
-        "count": 34
-      },
-      {
-        "name": "2004 - Summer",
-        "count": 28
-      },
-      {
-        "name": "2004 - Spring",
-        "count": 41
-      },
-      {
-        "name": "2004 - Fall",
-        "count": 42
-      },
-      {
-        "name": "2003 - Winter",
-        "count": 29
-      },
-      {
-        "name": "2003 - Summer",
-        "count": 29
-      },
-      {
-        "name": "2003 - Spring",
-        "count": 47
-      },
-      {
-        "name": "2003 - Fall",
-        "count": 41
-      },
-      {
-        "name": "2002 - Winter",
-        "count": 38
-      },
-      {
-        "name": "2002 - Summer",
-        "count": 30
-      },
-      {
-        "name": "2002 - Spring",
-        "count": 30
-      },
-      {
-        "name": "2002 - Fall",
-        "count": 36
-      },
-      {
-        "name": "2001 - Winter",
-        "count": 24
-      },
-      {
-        "name": "2001 - Summer",
-        "count": 29
-      },
-      {
-        "name": "2001 - Spring",
-        "count": 37
-      },
-      {
-        "name": "2001 - Fall",
-        "count": 35
-      },
-      {
-        "name": "2000 - Winter",
-        "count": 24
-      },
-      {
-        "name": "2000 - Summer",
-        "count": 19
-      },
-      {
-        "name": "2000 - Spring",
-        "count": 20
-      },
-      {
-        "name": "2000 - Fall",
-        "count": 27
-      },
-      {
-        "name": "1999 - Winter",
-        "count": 25
-      },
-      {
-        "name": "1999 - Summer",
-        "count": 32
-      },
-      {
-        "name": "1999 - Spring",
-        "count": 29
-      },
-      {
-        "name": "1999 - Fall",
-        "count": 27
-      },
-      {
-        "name": "1998 - Winter",
-        "count": 21
-      },
-      {
-        "name": "1998 - Summer",
-        "count": 17
-      },
-      {
-        "name": "1998 - Spring",
-        "count": 34
-      },
-      {
-        "name": "1998 - Fall",
-        "count": 26
-      },
-      {
-        "name": "1997 - Winter",
-        "count": 19
-      },
-      {
-        "name": "1997 - Summer",
-        "count": 22
-      },
-      {
-        "name": "1997 - Spring",
-        "count": 26
-      },
-      {
-        "name": "1997 - Fall",
-        "count": 15
-      },
-      {
-        "name": "1996 - Winter",
-        "count": 28
-      },
-      {
-        "name": "1996 - Summer",
-        "count": 18
-      },
-      {
-        "name": "1996 - Spring",
-        "count": 21
-      },
-      {
-        "name": "1996 - Fall",
-        "count": 25
-      },
-      {
-        "name": "1995 - Winter",
-        "count": 15
-      },
-      {
-        "name": "1995 - Summer",
-        "count": 17
-      },
-      {
-        "name": "1995 - Spring",
-        "count": 32
-      },
-      {
-        "name": "1995 - Fall",
-        "count": 21
-      },
-      {
-        "name": "1994 - Winter",
-        "count": 17
-      },
-      {
-        "name": "1994 - Summer",
-        "count": 25
-      },
-      {
-        "name": "1994 - Spring",
-        "count": 26
-      },
-      {
-        "name": "1994 - Fall",
-        "count": 22
-      },
-      {
-        "name": "1993 - Winter",
-        "count": 23
-      },
-      {
-        "name": "1993 - Summer",
-        "count": 27
-      },
-      {
-        "name": "1993 - Spring",
-        "count": 21
-      },
-      {
-        "name": "1993 - Fall",
-        "count": 20
-      },
-      {
-        "name": "1992 - Winter",
-        "count": 24
-      },
-      {
-        "name": "1992 - Summer",
-        "count": 37
-      },
-      {
-        "name": "1992 - Spring",
-        "count": 13
-      },
-      {
-        "name": "1992 - Fall",
-        "count": 26
-      },
-      {
-        "name": "1991 - Winter",
-        "count": 28
-      },
-      {
-        "name": "1991 - Summer",
-        "count": 35
-      },
-      {
-        "name": "1991 - Spring",
-        "count": 20
-      },
-      {
-        "name": "1991 - Fall",
-        "count": 20
-      },
-      {
-        "name": "1990 - Winter",
-        "count": 31
-      },
-      {
-        "name": "1990 - Summer",
-        "count": 22
-      },
-      {
-        "name": "1990 - Spring",
-        "count": 18
-      },
-      {
-        "name": "1990 - Fall",
-        "count": 17
-      },
-      {
-        "name": "1989 - Winter",
-        "count": 23
-      },
-      {
-        "name": "1989 - Summer",
-        "count": 20
-      },
-      {
-        "name": "1989 - Spring",
-        "count": 22
-      },
-      {
-        "name": "1989 - Fall",
-        "count": 27
-      },
-      {
-        "name": "1988 - Winter",
-        "count": 19
-      },
-      {
-        "name": "1988 - Summer",
-        "count": 17
-      },
-      {
-        "name": "1988 - Spring",
-        "count": 16
-      },
-      {
-        "name": "1988 - Fall",
-        "count": 20
-      },
-      {
-        "name": "1987 - Winter",
-        "count": 23
-      },
-      {
-        "name": "1987 - Summer",
-        "count": 17
-      },
-      {
-        "name": "1987 - Spring",
-        "count": 16
-      },
-      {
-        "name": "1987 - Fall",
-        "count": 26
-      },
-      {
-        "name": "1986 - Winter",
-        "count": 26
-      },
-      {
-        "name": "1986 - Summer",
-        "count": 23
-      },
-      {
-        "name": "1986 - Spring",
-        "count": 11
-      },
-      {
-        "name": "1986 - Fall",
-        "count": 22
-      },
-      {
-        "name": "1985 - Winter",
-        "count": 22
-      },
-      {
-        "name": "1985 - Summer",
-        "count": 17
-      },
-      {
-        "name": "1985 - Spring",
-        "count": 7
-      },
-      {
-        "name": "1985 - Fall",
-        "count": 21
-      },
-      {
-        "name": "1984 - Winter",
-        "count": 20
-      },
-      {
-        "name": "1984 - Summer",
-        "count": 14
-      },
-      {
-        "name": "1984 - Spring",
-        "count": 8
-      },
-      {
-        "name": "1984 - Fall",
-        "count": 9
-      },
-      {
-        "name": "1983 - Winter",
-        "count": 19
-      },
-      {
-        "name": "1983 - Summer",
-        "count": 11
-      },
-      {
-        "name": "1983 - Spring",
-        "count": 14
-      },
-      {
-        "name": "1983 - Fall",
-        "count": 12
-      },
-      {
-        "name": "1982 - Winter",
-        "count": 11
-      },
-      {
-        "name": "1982 - Summer",
-        "count": 9
-      },
-      {
-        "name": "1982 - Spring",
-        "count": 9
-      },
-      {
-        "name": "1982 - Fall",
-        "count": 11
-      },
-      {
-        "name": "1981 - Winter",
-        "count": 15
-      },
-      {
-        "name": "1981 - Summer",
-        "count": 12
-      },
-      {
-        "name": "1981 - Spring",
-        "count": 8
-      },
-      {
-        "name": "1981 - Fall",
-        "count": 14
-      },
-      {
-        "name": "1980 - Winter",
-        "count": 15
-      },
-      {
-        "name": "1980 - Summer",
-        "count": 9
-      },
-      {
-        "name": "1980 - Spring",
-        "count": 9
-      },
-      {
-        "name": "1980 - Fall",
-        "count": 6
-      },
-      {
-        "name": "1979 - Winter",
-        "count": 15
-      },
-      {
-        "name": "1979 - Summer",
-        "count": 9
-      },
-      {
-        "name": "1979 - Spring",
-        "count": 6
-      },
-      {
-        "name": "1979 - Fall",
-        "count": 10
-      },
-      {
-        "name": "1978 - Winter",
-        "count": 7
-      },
-      {
-        "name": "1978 - Summer",
-        "count": 8
-      },
-      {
-        "name": "1978 - Spring",
-        "count": 7
-      },
-      {
-        "name": "1978 - Fall",
-        "count": 4
-      },
-      {
-        "name": "1977 - Winter",
-        "count": 7
-      },
-      {
-        "name": "1977 - Summer",
-        "count": 7
-      },
-      {
-        "name": "1977 - Spring",
-        "count": 4
-      },
-      {
-        "name": "1977 - Fall",
-        "count": 9
-      },
-      {
-        "name": "1976 - Winter",
-        "count": 5
-      },
-      {
-        "name": "1976 - Summer",
-        "count": 3
-      },
-      {
-        "name": "1976 - Spring",
-        "count": 4
-      },
-      {
-        "name": "1976 - Fall",
-        "count": 6
-      },
-      {
-        "name": "1975 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1975 - Summer",
-        "count": 3
-      },
-      {
-        "name": "1975 - Spring",
-        "count": 6
-      },
-      {
-        "name": "1975 - Fall",
-        "count": 6
-      },
-      {
-        "name": "1974 - Winter",
-        "count": 4
-      },
-      {
-        "name": "1974 - Summer",
-        "count": 3
-      },
-      {
-        "name": "1974 - Spring",
-        "count": 4
-      },
-      {
-        "name": "1974 - Fall",
-        "count": 7
-      },
-      {
-        "name": "1973 - Winter",
-        "count": 6
-      },
-      {
-        "name": "1973 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1973 - Spring",
-        "count": 2
-      },
-      {
-        "name": "1973 - Fall",
-        "count": 5
-      },
-      {
-        "name": "1972 - Winter",
-        "count": 6
-      },
-      {
-        "name": "1972 - Summer",
-        "count": 2
-      },
-      {
-        "name": "1972 - Spring",
-        "count": 3
-      },
-      {
-        "name": "1972 - Fall",
-        "count": 7
-      },
-      {
-        "name": "1971 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1971 - Summer",
-        "count": 2
-      },
-      {
-        "name": "1971 - Fall",
-        "count": 5
-      },
-      {
-        "name": "1970 - Winter",
-        "count": 5
-      },
-      {
-        "name": "1970 - Summer",
-        "count": 3
-      },
-      {
-        "name": "1970 - Spring",
-        "count": 4
-      },
-      {
-        "name": "1970 - Fall",
-        "count": 3
-      },
-      {
-        "name": "1969 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1969 - Summer",
-        "count": 3
-      },
-      {
-        "name": "1969 - Spring",
-        "count": 2
-      },
-      {
-        "name": "1969 - Fall",
-        "count": 6
-      },
-      {
-        "name": "1968 - Winter",
-        "count": 4
-      },
-      {
-        "name": "1968 - Summer",
-        "count": 2
-      },
-      {
-        "name": "1968 - Spring",
-        "count": 4
-      },
-      {
-        "name": "1968 - Fall",
-        "count": 5
-      },
-      {
-        "name": "1967 - Winter",
-        "count": 5
-      },
-      {
-        "name": "1967 - Summer",
-        "count": 3
-      },
-      {
-        "name": "1967 - Spring",
-        "count": 3
-      },
-      {
-        "name": "1967 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1966 - Winter",
-        "count": 1
-      },
-      {
-        "name": "1966 - Summer",
-        "count": 3
-      },
-      {
-        "name": "1966 - Spring",
-        "count": 2
-      },
-      {
-        "name": "1966 - Fall",
-        "count": 2
-      },
-      {
-        "name": "1965 - Winter",
-        "count": 2
-      },
-      {
-        "name": "1965 - Spring",
-        "count": 3
-      },
-      {
-        "name": "1965 - Fall",
-        "count": 2
-      },
-      {
-        "name": "1964 - Winter",
-        "count": 4
-      },
-      {
-        "name": "1964 - Summer",
-        "count": 3
-      },
-      {
-        "name": "1963 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1963 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1963 - Fall",
-        "count": 4
-      },
-      {
-        "name": "1962 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1962 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1962 - Fall",
-        "count": 2
-      },
-      {
-        "name": "1961 - Winter",
-        "count": 1
-      },
-      {
-        "name": "1961 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1961 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1960 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1959 - Winter",
-        "count": 2
-      },
-      {
-        "name": "1959 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1958 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1957 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1956 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1956 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1956 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1954 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1954 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1953 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1952 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1951 - Winter",
-        "count": 1
-      },
-      {
-        "name": "1950 - Winter",
-        "count": 2
-      },
-      {
-        "name": "1949 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1949 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1948 - Winter",
-        "count": 2
-      },
-      {
-        "name": "1948 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1947 - Winter",
-        "count": 1
-      },
-      {
-        "name": "1946 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1945 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1943 - Winter",
-        "count": 1
-      },
-      {
-        "name": "1943 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1943 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1942 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1941 - Winter",
-        "count": 2
-      },
-      {
-        "name": "1940 - Winter",
-        "count": 1
-      },
-      {
-        "name": "1940 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1940 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1939 - Winter",
-        "count": 1
-      },
-      {
-        "name": "1939 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1938 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1937 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1936 - Winter",
-        "count": 8
-      },
-      {
-        "name": "1936 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1935 - Winter",
-        "count": 6
-      },
-      {
-        "name": "1935 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1935 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1935 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1934 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1934 - Summer",
-        "count": 2
-      },
-      {
-        "name": "1934 - Spring",
-        "count": 3
-      },
-      {
-        "name": "1933 - Winter",
-        "count": 5
-      },
-      {
-        "name": "1933 - Spring",
-        "count": 2
-      },
-      {
-        "name": "1933 - Fall",
-        "count": 3
-      },
-      {
-        "name": "1932 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1932 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1931 - Winter",
-        "count": 11
-      },
-      {
-        "name": "1931 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1930 - Winter",
-        "count": 1
-      },
-      {
-        "name": "1930 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1929 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1928 - Winter",
-        "count": 2
-      },
-      {
-        "name": "1928 - Summer",
-        "count": 2
-      },
-      {
-        "name": "1928 - Spring",
-        "count": 1
-      },
-      {
-        "name": "1927 - Winter",
-        "count": 2
-      },
-      {
-        "name": "1926 - Winter",
-        "count": 1
-      },
-      {
-        "name": "1926 - Fall",
-        "count": 1
-      },
-      {
-        "name": "1925 - Winter",
-        "count": 2
-      },
-      {
-        "name": "1924 - Winter",
-        "count": 3
-      },
-      {
-        "name": "1918 - Winter",
-        "count": 6
-      },
-      {
-        "name": "1918 - Summer",
-        "count": 1
-      },
-      {
-        "name": "1917 - Winter",
-        "count": 2
-      },
-      {
-        "name": "1917 - Summer",
-        "count": 3
-      },
-      {
-        "name": "1917 - Spring",
-        "count": 2
-      },
-      {
-        "name": "1917 - Fall",
-        "count": 4
-      }
-    ]
-  },
   "weekdays": {
     "list": [
       "Monday",
@@ -2022,479 +391,672 @@
       "Sunday"
     ],
     "withCounts": [
-      "Monday (2)",
+      "Monday (1)",
       "Tuesday (6)",
       "Wednesday (4)",
       "Thursday (4)",
-      "Friday (13)",
-      "Saturday (5)",
-      "Sunday (11)"
+      "Friday (10)",
+      "Saturday (3)",
+      "Sunday (8)"
     ]
   },
-  "years": [
-    {
-      "name": "2027",
-      "count": 3
-    },
-    {
-      "name": "2026",
-      "count": 58
-    },
-    {
-      "name": "2025",
-      "count": 218
-    },
-    {
-      "name": "2024",
-      "count": 236
-    },
-    {
-      "name": "2023",
-      "count": 258
-    },
-    {
-      "name": "2022",
-      "count": 246
-    },
-    {
-      "name": "2021",
-      "count": 285
-    },
-    {
-      "name": "2020",
-      "count": 227
-    },
-    {
-      "name": "2019",
-      "count": 246
-    },
-    {
-      "name": "2018",
-      "count": 279
-    },
-    {
-      "name": "2017",
-      "count": 255
-    },
-    {
-      "name": "2016",
-      "count": 282
-    },
-    {
-      "name": "2015",
-      "count": 226
-    },
-    {
-      "name": "2014",
-      "count": 255
-    },
-    {
-      "name": "2013",
-      "count": 208
-    },
-    {
-      "name": "2012",
-      "count": 232
-    },
-    {
-      "name": "2011",
-      "count": 183
-    },
-    {
-      "name": "2010",
-      "count": 176
-    },
-    {
-      "name": "2009",
-      "count": 178
-    },
-    {
-      "name": "2008",
-      "count": 176
-    },
-    {
-      "name": "2007",
-      "count": 188
-    },
-    {
-      "name": "2006",
-      "count": 199
-    },
-    {
-      "name": "2005",
-      "count": 172
-    },
-    {
-      "name": "2004",
-      "count": 145
-    },
-    {
-      "name": "2003",
-      "count": 146
-    },
-    {
-      "name": "2002",
-      "count": 134
-    },
-    {
-      "name": "2001",
-      "count": 125
-    },
-    {
-      "name": "2000",
-      "count": 90
-    },
-    {
-      "name": "1999",
-      "count": 113
-    },
-    {
-      "name": "1998",
-      "count": 98
-    },
-    {
-      "name": "1997",
-      "count": 82
-    },
-    {
-      "name": "1996",
-      "count": 92
-    },
-    {
-      "name": "1995",
-      "count": 85
-    },
-    {
-      "name": "1994",
-      "count": 90
-    },
-    {
-      "name": "1993",
-      "count": 91
-    },
-    {
-      "name": "1992",
-      "count": 100
-    },
-    {
-      "name": "1991",
-      "count": 103
-    },
-    {
-      "name": "1990",
-      "count": 88
-    },
-    {
-      "name": "1989",
-      "count": 92
-    },
-    {
-      "name": "1988",
-      "count": 72
-    },
-    {
-      "name": "1987",
-      "count": 82
-    },
-    {
-      "name": "1986",
-      "count": 82
-    },
-    {
-      "name": "1985",
-      "count": 67
-    },
-    {
-      "name": "1984",
-      "count": 51
-    },
-    {
-      "name": "1983",
-      "count": 56
-    },
-    {
-      "name": "1982",
-      "count": 40
-    },
-    {
-      "name": "1981",
-      "count": 49
-    },
-    {
-      "name": "1980",
-      "count": 39
-    },
-    {
-      "name": "1979",
-      "count": 40
-    },
-    {
-      "name": "1978",
-      "count": 26
-    },
-    {
-      "name": "1977",
-      "count": 27
-    },
-    {
-      "name": "1976",
-      "count": 18
-    },
-    {
-      "name": "1975",
-      "count": 18
-    },
-    {
-      "name": "1974",
-      "count": 18
-    },
-    {
-      "name": "1973",
-      "count": 14
-    },
-    {
-      "name": "1972",
-      "count": 18
-    },
-    {
-      "name": "1971",
-      "count": 10
-    },
-    {
-      "name": "1970",
-      "count": 15
-    },
-    {
-      "name": "1969",
-      "count": 14
-    },
-    {
-      "name": "1968",
-      "count": 15
-    },
-    {
-      "name": "1967",
-      "count": 12
-    },
-    {
-      "name": "1966",
-      "count": 8
-    },
-    {
-      "name": "1965",
-      "count": 7
-    },
-    {
-      "name": "1964",
-      "count": 7
-    },
-    {
-      "name": "1963",
-      "count": 8
-    },
-    {
-      "name": "1962",
-      "count": 4
-    },
-    {
-      "name": "1961",
-      "count": 3
-    },
-    {
-      "name": "1960",
-      "count": 1
-    },
-    {
-      "name": "1959",
-      "count": 3
-    },
-    {
-      "name": "1958",
-      "count": 1
-    },
-    {
-      "name": "1957",
-      "count": 1
-    },
-    {
-      "name": "1956",
-      "count": 3
-    },
-    {
-      "name": "1954",
-      "count": 2
-    },
-    {
-      "name": "1953",
-      "count": 1
-    },
-    {
-      "name": "1952",
-      "count": 1
-    },
-    {
-      "name": "1951",
-      "count": 1
-    },
-    {
-      "name": "1950",
-      "count": 2
-    },
-    {
-      "name": "1949",
-      "count": 2
-    },
-    {
-      "name": "1948",
-      "count": 3
-    },
-    {
-      "name": "1947",
-      "count": 1
-    },
-    {
-      "name": "1946",
-      "count": 3
-    },
-    {
-      "name": "1945",
-      "count": 1
-    },
-    {
-      "name": "1943",
-      "count": 3
-    },
-    {
-      "name": "1942",
-      "count": 3
-    },
-    {
-      "name": "1941",
-      "count": 2
-    },
-    {
-      "name": "1940",
-      "count": 3
-    },
-    {
-      "name": "1939",
-      "count": 2
-    },
-    {
-      "name": "1938",
-      "count": 1
-    },
-    {
-      "name": "1937",
-      "count": 1
-    },
-    {
-      "name": "1936",
-      "count": 9
-    },
-    {
-      "name": "1935",
-      "count": 9
-    },
-    {
-      "name": "1934",
-      "count": 8
-    },
-    {
-      "name": "1933",
-      "count": 10
-    },
-    {
-      "name": "1932",
-      "count": 4
-    },
-    {
-      "name": "1931",
-      "count": 12
-    },
-    {
-      "name": "1930",
-      "count": 2
-    },
-    {
-      "name": "1929",
-      "count": 3
-    },
-    {
-      "name": "1928",
-      "count": 5
-    },
-    {
-      "name": "1927",
-      "count": 2
-    },
-    {
-      "name": "1926",
-      "count": 2
-    },
-    {
-      "name": "1925",
-      "count": 2
-    },
-    {
-      "name": "1924",
-      "count": 3
-    },
-    {
-      "name": "1918",
-      "count": 7
-    },
-    {
-      "name": "1917",
-      "count": 11
-    }
-  ],
-  "statuses": [
-    {
-      "name": "FINISHED",
-      "count": 7285
-    },
-    {
-      "name": "ONGOING",
-      "count": 87
-    },
-    {
-      "name": "tba",
-      "count": 38
-    },
-    {
-      "name": "unreleased",
-      "count": 24
-    },
-    {
-      "name": "UPCOMING",
-      "count": 14
-    }
-  ],
-  "movieSpecialFilters": {
-    "upcoming": 18,
-    "newReleases": 26
+  "seasons": {
+    "list": [
+      "Fall 2027",
+      "Spring 2027",
+      "Fall 2026",
+      "Summer 2026",
+      "Spring 2026",
+      "Winter 2026",
+      "Fall 2025",
+      "Summer 2025",
+      "Spring 2025",
+      "Winter 2025",
+      "Fall 2024",
+      "Summer 2024",
+      "Spring 2024",
+      "Winter 2024",
+      "Fall 2023",
+      "Summer 2023",
+      "Spring 2023",
+      "Winter 2023",
+      "Fall 2022",
+      "Summer 2022",
+      "Spring 2022",
+      "Winter 2022",
+      "Fall 2021",
+      "Summer 2021",
+      "Spring 2021",
+      "Winter 2021",
+      "Fall 2020",
+      "Summer 2020",
+      "Spring 2020",
+      "Winter 2020",
+      "Fall 2019",
+      "Summer 2019",
+      "Spring 2019",
+      "Winter 2019",
+      "Fall 2018",
+      "Summer 2018",
+      "Spring 2018",
+      "Winter 2018",
+      "Fall 2017",
+      "Summer 2017",
+      "Spring 2017",
+      "Winter 2017",
+      "Fall 2016",
+      "Summer 2016",
+      "Spring 2016",
+      "Winter 2016",
+      "Fall 2015",
+      "Summer 2015",
+      "Spring 2015",
+      "Winter 2015",
+      "Fall 2014",
+      "Summer 2014",
+      "Spring 2014",
+      "Winter 2014",
+      "Fall 2013",
+      "Summer 2013",
+      "Spring 2013",
+      "Winter 2013",
+      "Fall 2012",
+      "Summer 2012",
+      "Spring 2012",
+      "Winter 2012",
+      "Fall 2011",
+      "Summer 2011",
+      "Spring 2011",
+      "Winter 2011",
+      "Fall 2010",
+      "Summer 2010",
+      "Spring 2010",
+      "Winter 2010",
+      "Fall 2009",
+      "Summer 2009",
+      "Spring 2009",
+      "Winter 2009",
+      "Fall 2008",
+      "Summer 2008",
+      "Spring 2008",
+      "Winter 2008",
+      "Fall 2007",
+      "Summer 2007",
+      "Spring 2007",
+      "Winter 2007",
+      "Fall 2006",
+      "Summer 2006",
+      "Spring 2006",
+      "Winter 2006",
+      "Fall 2005",
+      "Summer 2005",
+      "Spring 2005",
+      "Winter 2005",
+      "Fall 2004",
+      "Summer 2004",
+      "Spring 2004",
+      "Winter 2004",
+      "Fall 2003",
+      "Summer 2003",
+      "Spring 2003",
+      "Winter 2003",
+      "Fall 2002",
+      "Summer 2002",
+      "Spring 2002",
+      "Winter 2002",
+      "Fall 2001",
+      "Summer 2001",
+      "Spring 2001",
+      "Winter 2001",
+      "Fall 2000",
+      "Summer 2000",
+      "Spring 2000",
+      "Winter 2000",
+      "Fall 1999",
+      "Summer 1999",
+      "Spring 1999",
+      "Winter 1999",
+      "Fall 1998",
+      "Summer 1998",
+      "Spring 1998",
+      "Winter 1998",
+      "Fall 1997",
+      "Summer 1997",
+      "Spring 1997",
+      "Winter 1997",
+      "Fall 1996",
+      "Summer 1996",
+      "Spring 1996",
+      "Winter 1996",
+      "Fall 1995",
+      "Summer 1995",
+      "Spring 1995",
+      "Winter 1995",
+      "Fall 1994",
+      "Summer 1994",
+      "Spring 1994",
+      "Winter 1994",
+      "Fall 1993",
+      "Summer 1993",
+      "Spring 1993",
+      "Winter 1993",
+      "Fall 1992",
+      "Summer 1992",
+      "Spring 1992",
+      "Winter 1992",
+      "Fall 1991",
+      "Summer 1991",
+      "Spring 1991",
+      "Winter 1991",
+      "Fall 1990",
+      "Summer 1990",
+      "Spring 1990",
+      "Winter 1990",
+      "Fall 1989",
+      "Summer 1989",
+      "Spring 1989",
+      "Winter 1989",
+      "Fall 1988",
+      "Summer 1988",
+      "Spring 1988",
+      "Winter 1988",
+      "Fall 1987",
+      "Summer 1987",
+      "Spring 1987",
+      "Winter 1987",
+      "Fall 1986",
+      "Summer 1986",
+      "Spring 1986",
+      "Winter 1986",
+      "Fall 1985",
+      "Summer 1985",
+      "Spring 1985",
+      "Winter 1985",
+      "Fall 1984",
+      "Summer 1984",
+      "Spring 1984",
+      "Winter 1984",
+      "Fall 1983",
+      "Summer 1983",
+      "Spring 1983",
+      "Winter 1983",
+      "Fall 1982",
+      "Summer 1982",
+      "Spring 1982",
+      "Winter 1982",
+      "Fall 1981",
+      "Summer 1981",
+      "Spring 1981",
+      "Winter 1981",
+      "Fall 1980",
+      "Summer 1980",
+      "Spring 1980",
+      "Winter 1980",
+      "Fall 1979",
+      "Summer 1979",
+      "Spring 1979",
+      "Winter 1979",
+      "Fall 1978",
+      "Summer 1978",
+      "Spring 1978",
+      "Winter 1978",
+      "Fall 1977",
+      "Summer 1977",
+      "Spring 1977",
+      "Winter 1977",
+      "Fall 1976",
+      "Summer 1976",
+      "Spring 1976",
+      "Winter 1976",
+      "Fall 1975",
+      "Summer 1975",
+      "Spring 1975",
+      "Winter 1975",
+      "Fall 1974",
+      "Summer 1974",
+      "Spring 1974",
+      "Winter 1974",
+      "Fall 1973",
+      "Summer 1973",
+      "Spring 1973",
+      "Winter 1973",
+      "Fall 1972",
+      "Summer 1972",
+      "Spring 1972",
+      "Winter 1972",
+      "Fall 1971",
+      "Summer 1971",
+      "Winter 1971",
+      "Fall 1970",
+      "Summer 1970",
+      "Spring 1970",
+      "Winter 1970",
+      "Fall 1969",
+      "Summer 1969",
+      "Spring 1969",
+      "Winter 1969",
+      "Fall 1968",
+      "Summer 1968",
+      "Spring 1968",
+      "Winter 1968",
+      "Fall 1967",
+      "Summer 1967",
+      "Spring 1967",
+      "Winter 1967",
+      "Fall 1966",
+      "Summer 1966",
+      "Spring 1966",
+      "Winter 1966",
+      "Fall 1965",
+      "Spring 1965",
+      "Winter 1965",
+      "Summer 1964",
+      "Winter 1964",
+      "Fall 1963",
+      "Summer 1963",
+      "Winter 1963",
+      "Fall 1962",
+      "Summer 1962",
+      "Spring 1962",
+      "Summer 1961",
+      "Spring 1961",
+      "Winter 1961",
+      "Summer 1960",
+      "Spring 1959",
+      "Winter 1959",
+      "Fall 1958",
+      "Spring 1957",
+      "Fall 1956",
+      "Summer 1956",
+      "Spring 1956",
+      "Fall 1954",
+      "Spring 1954",
+      "Summer 1953",
+      "Fall 1952",
+      "Winter 1951",
+      "Winter 1950",
+      "Fall 1949",
+      "Spring 1949",
+      "Fall 1948",
+      "Winter 1948",
+      "Winter 1947",
+      "Winter 1946",
+      "Spring 1945",
+      "Summer 1943",
+      "Spring 1943",
+      "Winter 1943",
+      "Winter 1942",
+      "Winter 1941",
+      "Summer 1940",
+      "Spring 1940",
+      "Winter 1940",
+      "Summer 1939",
+      "Winter 1939",
+      "Fall 1938",
+      "Fall 1937",
+      "Fall 1936",
+      "Winter 1936",
+      "Fall 1935",
+      "Summer 1935",
+      "Spring 1935",
+      "Winter 1935",
+      "Summer 1934",
+      "Spring 1934",
+      "Winter 1934",
+      "Fall 1933",
+      "Spring 1933",
+      "Winter 1933",
+      "Fall 1932",
+      "Winter 1932",
+      "Fall 1931",
+      "Winter 1931",
+      "Spring 1930",
+      "Winter 1930",
+      "Winter 1929",
+      "Summer 1928",
+      "Spring 1928",
+      "Winter 1928",
+      "Winter 1927",
+      "Fall 1926",
+      "Winter 1926",
+      "Winter 1925",
+      "Winter 1924",
+      "Summer 1918",
+      "Winter 1918",
+      "Fall 1917",
+      "Summer 1917",
+      "Spring 1917",
+      "Winter 1917"
+    ],
+    "withCounts": [
+      "Fall 2027 (2)",
+      "Spring 2027 (1)",
+      "Fall 2026 (14)",
+      "Summer 2026 (1)",
+      "Spring 2026 (6)",
+      "Winter 2026 (37)",
+      "Fall 2025 (45)",
+      "Summer 2025 (55)",
+      "Spring 2025 (62)",
+      "Winter 2025 (56)",
+      "Fall 2024 (49)",
+      "Summer 2024 (62)",
+      "Spring 2024 (72)",
+      "Winter 2024 (53)",
+      "Fall 2023 (75)",
+      "Summer 2023 (58)",
+      "Spring 2023 (72)",
+      "Winter 2023 (53)",
+      "Fall 2022 (64)",
+      "Summer 2022 (66)",
+      "Spring 2022 (55)",
+      "Winter 2022 (61)",
+      "Fall 2021 (71)",
+      "Summer 2021 (63)",
+      "Spring 2021 (77)",
+      "Winter 2021 (74)",
+      "Fall 2020 (71)",
+      "Summer 2020 (45)",
+      "Spring 2020 (54)",
+      "Winter 2020 (58)",
+      "Fall 2019 (66)",
+      "Summer 2019 (65)",
+      "Spring 2019 (59)",
+      "Winter 2019 (56)",
+      "Fall 2018 (68)",
+      "Summer 2018 (74)",
+      "Spring 2018 (71)",
+      "Winter 2018 (65)",
+      "Fall 2017 (68)",
+      "Summer 2017 (73)",
+      "Spring 2017 (60)",
+      "Winter 2017 (54)",
+      "Fall 2016 (77)",
+      "Summer 2016 (72)",
+      "Spring 2016 (73)",
+      "Winter 2016 (60)",
+      "Fall 2015 (77)",
+      "Summer 2015 (61)",
+      "Spring 2015 (56)",
+      "Winter 2015 (32)",
+      "Fall 2014 (65)",
+      "Summer 2014 (65)",
+      "Spring 2014 (61)",
+      "Winter 2014 (64)",
+      "Fall 2013 (55)",
+      "Summer 2013 (53)",
+      "Spring 2013 (48)",
+      "Winter 2013 (52)",
+      "Fall 2012 (64)",
+      "Summer 2012 (61)",
+      "Spring 2012 (51)",
+      "Winter 2012 (56)",
+      "Fall 2011 (45)",
+      "Summer 2011 (48)",
+      "Spring 2011 (48)",
+      "Winter 2011 (42)",
+      "Fall 2010 (52)",
+      "Summer 2010 (40)",
+      "Spring 2010 (38)",
+      "Winter 2010 (46)",
+      "Fall 2009 (46)",
+      "Summer 2009 (40)",
+      "Spring 2009 (53)",
+      "Winter 2009 (39)",
+      "Fall 2008 (49)",
+      "Summer 2008 (41)",
+      "Spring 2008 (50)",
+      "Winter 2008 (36)",
+      "Fall 2007 (49)",
+      "Summer 2007 (33)",
+      "Spring 2007 (59)",
+      "Winter 2007 (47)",
+      "Fall 2006 (51)",
+      "Summer 2006 (49)",
+      "Spring 2006 (59)",
+      "Winter 2006 (40)",
+      "Fall 2005 (50)",
+      "Summer 2005 (40)",
+      "Spring 2005 (45)",
+      "Winter 2005 (37)",
+      "Fall 2004 (42)",
+      "Summer 2004 (28)",
+      "Spring 2004 (41)",
+      "Winter 2004 (34)",
+      "Fall 2003 (41)",
+      "Summer 2003 (29)",
+      "Spring 2003 (47)",
+      "Winter 2003 (29)",
+      "Fall 2002 (36)",
+      "Summer 2002 (30)",
+      "Spring 2002 (30)",
+      "Winter 2002 (38)",
+      "Fall 2001 (35)",
+      "Summer 2001 (29)",
+      "Spring 2001 (37)",
+      "Winter 2001 (24)",
+      "Fall 2000 (27)",
+      "Summer 2000 (19)",
+      "Spring 2000 (20)",
+      "Winter 2000 (24)",
+      "Fall 1999 (27)",
+      "Summer 1999 (32)",
+      "Spring 1999 (29)",
+      "Winter 1999 (25)",
+      "Fall 1998 (26)",
+      "Summer 1998 (17)",
+      "Spring 1998 (34)",
+      "Winter 1998 (21)",
+      "Fall 1997 (15)",
+      "Summer 1997 (22)",
+      "Spring 1997 (26)",
+      "Winter 1997 (19)",
+      "Fall 1996 (25)",
+      "Summer 1996 (18)",
+      "Spring 1996 (21)",
+      "Winter 1996 (28)",
+      "Fall 1995 (21)",
+      "Summer 1995 (17)",
+      "Spring 1995 (32)",
+      "Winter 1995 (15)",
+      "Fall 1994 (22)",
+      "Summer 1994 (25)",
+      "Spring 1994 (26)",
+      "Winter 1994 (17)",
+      "Fall 1993 (20)",
+      "Summer 1993 (27)",
+      "Spring 1993 (21)",
+      "Winter 1993 (23)",
+      "Fall 1992 (26)",
+      "Summer 1992 (37)",
+      "Spring 1992 (13)",
+      "Winter 1992 (24)",
+      "Fall 1991 (20)",
+      "Summer 1991 (35)",
+      "Spring 1991 (20)",
+      "Winter 1991 (28)",
+      "Fall 1990 (17)",
+      "Summer 1990 (22)",
+      "Spring 1990 (18)",
+      "Winter 1990 (31)",
+      "Fall 1989 (27)",
+      "Summer 1989 (20)",
+      "Spring 1989 (22)",
+      "Winter 1989 (23)",
+      "Fall 1988 (20)",
+      "Summer 1988 (17)",
+      "Spring 1988 (16)",
+      "Winter 1988 (19)",
+      "Fall 1987 (26)",
+      "Summer 1987 (17)",
+      "Spring 1987 (16)",
+      "Winter 1987 (23)",
+      "Fall 1986 (22)",
+      "Summer 1986 (23)",
+      "Spring 1986 (11)",
+      "Winter 1986 (26)",
+      "Fall 1985 (21)",
+      "Summer 1985 (17)",
+      "Spring 1985 (7)",
+      "Winter 1985 (22)",
+      "Fall 1984 (9)",
+      "Summer 1984 (14)",
+      "Spring 1984 (8)",
+      "Winter 1984 (20)",
+      "Fall 1983 (12)",
+      "Summer 1983 (11)",
+      "Spring 1983 (14)",
+      "Winter 1983 (19)",
+      "Fall 1982 (11)",
+      "Summer 1982 (9)",
+      "Spring 1982 (9)",
+      "Winter 1982 (11)",
+      "Fall 1981 (14)",
+      "Summer 1981 (12)",
+      "Spring 1981 (8)",
+      "Winter 1981 (15)",
+      "Fall 1980 (6)",
+      "Summer 1980 (9)",
+      "Spring 1980 (9)",
+      "Winter 1980 (15)",
+      "Fall 1979 (10)",
+      "Summer 1979 (9)",
+      "Spring 1979 (6)",
+      "Winter 1979 (15)",
+      "Fall 1978 (4)",
+      "Summer 1978 (8)",
+      "Spring 1978 (7)",
+      "Winter 1978 (7)",
+      "Fall 1977 (9)",
+      "Summer 1977 (7)",
+      "Spring 1977 (4)",
+      "Winter 1977 (7)",
+      "Fall 1976 (6)",
+      "Summer 1976 (3)",
+      "Spring 1976 (4)",
+      "Winter 1976 (5)",
+      "Fall 1975 (6)",
+      "Summer 1975 (3)",
+      "Spring 1975 (6)",
+      "Winter 1975 (3)",
+      "Fall 1974 (7)",
+      "Summer 1974 (3)",
+      "Spring 1974 (4)",
+      "Winter 1974 (4)",
+      "Fall 1973 (5)",
+      "Summer 1973 (1)",
+      "Spring 1973 (2)",
+      "Winter 1973 (6)",
+      "Fall 1972 (7)",
+      "Summer 1972 (2)",
+      "Spring 1972 (3)",
+      "Winter 1972 (6)",
+      "Fall 1971 (5)",
+      "Summer 1971 (2)",
+      "Winter 1971 (3)",
+      "Fall 1970 (3)",
+      "Summer 1970 (3)",
+      "Spring 1970 (4)",
+      "Winter 1970 (5)",
+      "Fall 1969 (6)",
+      "Summer 1969 (3)",
+      "Spring 1969 (2)",
+      "Winter 1969 (3)",
+      "Fall 1968 (5)",
+      "Summer 1968 (2)",
+      "Spring 1968 (4)",
+      "Winter 1968 (4)",
+      "Fall 1967 (1)",
+      "Summer 1967 (3)",
+      "Spring 1967 (3)",
+      "Winter 1967 (5)",
+      "Fall 1966 (2)",
+      "Summer 1966 (3)",
+      "Spring 1966 (2)",
+      "Winter 1966 (1)",
+      "Fall 1965 (2)",
+      "Spring 1965 (3)",
+      "Winter 1965 (2)",
+      "Summer 1964 (3)",
+      "Winter 1964 (4)",
+      "Fall 1963 (4)",
+      "Summer 1963 (1)",
+      "Winter 1963 (3)",
+      "Fall 1962 (2)",
+      "Summer 1962 (1)",
+      "Spring 1962 (1)",
+      "Summer 1961 (1)",
+      "Spring 1961 (1)",
+      "Winter 1961 (1)",
+      "Summer 1960 (1)",
+      "Spring 1959 (1)",
+      "Winter 1959 (2)",
+      "Fall 1958 (1)",
+      "Spring 1957 (1)",
+      "Fall 1956 (1)",
+      "Summer 1956 (1)",
+      "Spring 1956 (1)",
+      "Fall 1954 (1)",
+      "Spring 1954 (1)",
+      "Summer 1953 (1)",
+      "Fall 1952 (1)",
+      "Winter 1951 (1)",
+      "Winter 1950 (2)",
+      "Fall 1949 (1)",
+      "Spring 1949 (1)",
+      "Fall 1948 (1)",
+      "Winter 1948 (2)",
+      "Winter 1947 (1)",
+      "Winter 1946 (3)",
+      "Spring 1945 (1)",
+      "Summer 1943 (1)",
+      "Spring 1943 (1)",
+      "Winter 1943 (1)",
+      "Winter 1942 (3)",
+      "Winter 1941 (2)",
+      "Summer 1940 (1)",
+      "Spring 1940 (1)",
+      "Winter 1940 (1)",
+      "Summer 1939 (1)",
+      "Winter 1939 (1)",
+      "Fall 1938 (1)",
+      "Fall 1937 (1)",
+      "Fall 1936 (1)",
+      "Winter 1936 (8)",
+      "Fall 1935 (1)",
+      "Summer 1935 (1)",
+      "Spring 1935 (1)",
+      "Winter 1935 (6)",
+      "Summer 1934 (2)",
+      "Spring 1934 (3)",
+      "Winter 1934 (3)",
+      "Fall 1933 (3)",
+      "Spring 1933 (2)",
+      "Winter 1933 (5)",
+      "Fall 1932 (1)",
+      "Winter 1932 (3)",
+      "Fall 1931 (1)",
+      "Winter 1931 (11)",
+      "Spring 1930 (1)",
+      "Winter 1930 (1)",
+      "Winter 1929 (3)",
+      "Summer 1928 (2)",
+      "Spring 1928 (1)",
+      "Winter 1928 (2)",
+      "Winter 1927 (2)",
+      "Fall 1926 (1)",
+      "Winter 1926 (1)",
+      "Winter 1925 (2)",
+      "Winter 1924 (3)",
+      "Summer 1918 (1)",
+      "Winter 1918 (6)",
+      "Fall 1917 (4)",
+      "Summer 1917 (3)",
+      "Spring 1917 (2)",
+      "Winter 1917 (2)"
+    ]
   },
   "movieGenres": {
-    "withCounts": [
-      "Animation (1515)",
-      "Adventure (726)",
-      "Action (726)",
-      "Fantasy (573)",
-      "Drama (550)",
-      "Comedy (540)",
-      "Sci-Fi (354)",
-      "Kids (213)",
-      "Family (198)",
-      "Romance (194)",
-      "Mystery (140)",
-      "Supernatural (136)",
-      "Music (78)",
-      "Horror (69)",
-      "Sports (54)",
-      "School (52)",
-      "Slice of Life (51)"
-    ],
     "list": [
       {
         "name": "Animation",
@@ -2537,33 +1099,257 @@
         "count": 194
       },
       {
-        "name": "Mystery",
-        "count": 140
-      },
-      {
         "name": "Supernatural",
-        "count": 136
+        "count": 135
       },
       {
-        "name": "Music",
-        "count": 78
+        "name": "Science Fiction",
+        "count": 128
       },
       {
-        "name": "Horror",
-        "count": 69
+        "name": "Historical",
+        "count": 126
       },
       {
-        "name": "Sports",
-        "count": 54
+        "name": "Mecha",
+        "count": 120
       },
       {
-        "name": "School",
-        "count": 52
+        "name": "Mystery",
+        "count": 110
       },
       {
         "name": "Slice of Life",
-        "count": 51
+        "count": 92
+      },
+      {
+        "name": "Military",
+        "count": 90
+      },
+      {
+        "name": "Magic",
+        "count": 82
+      },
+      {
+        "name": "Super Power",
+        "count": 80
+      },
+      {
+        "name": "Space",
+        "count": 75
+      },
+      {
+        "name": "School",
+        "count": 74
+      },
+      {
+        "name": "Horror",
+        "count": 71
+      },
+      {
+        "name": "Sports",
+        "count": 68
+      },
+      {
+        "name": "Music",
+        "count": 65
+      },
+      {
+        "name": "Psychological",
+        "count": 50
+      },
+      {
+        "name": "Friendship",
+        "count": 49
+      },
+      {
+        "name": "Thriller",
+        "count": 41
+      },
+      {
+        "name": "Crime",
+        "count": 41
+      },
+      {
+        "name": "Police",
+        "count": 40
+      },
+      {
+        "name": "Martial Arts",
+        "count": 35
+      },
+      {
+        "name": "Demons",
+        "count": 30
+      },
+      {
+        "name": "History",
+        "count": 27
+      },
+      {
+        "name": "Ecchi",
+        "count": 23
+      },
+      {
+        "name": "Dementia",
+        "count": 22
+      },
+      {
+        "name": "Mahou Shoujo",
+        "count": 22
+      },
+      {
+        "name": "Anime Influenced",
+        "count": 22
+      },
+      {
+        "name": "War",
+        "count": 20
+      },
+      {
+        "name": "Short",
+        "count": 20
+      },
+      {
+        "name": "Samurai",
+        "count": 20
+      },
+      {
+        "name": "Sport",
+        "count": 20
+      },
+      {
+        "name": "Parody",
+        "count": 15
+      },
+      {
+        "name": "Game",
+        "count": 12
+      },
+      {
+        "name": "Vampire",
+        "count": 9
+      },
+      {
+        "name": "Cars",
+        "count": 9
+      },
+      {
+        "name": "Racing",
+        "count": 9
+      },
+      {
+        "name": "Biography",
+        "count": 8
+      },
+      {
+        "name": "Harem",
+        "count": 8
+      },
+      {
+        "name": "TV Movie",
+        "count": 8
+      },
+      {
+        "name": "Gore",
+        "count": 5
+      },
+      {
+        "name": "Zombies",
+        "count": 5
+      },
+      {
+        "name": "Shounen Ai",
+        "count": 3
+      },
+      {
+        "name": "Political",
+        "count": 3
+      },
+      {
+        "name": "Gender Bender",
+        "count": 2
+      },
+      {
+        "name": "Medical",
+        "count": 2
+      },
+      {
+        "name": "Musical",
+        "count": 2
+      },
+      {
+        "name": "Youth",
+        "count": 1
+      },
+      {
+        "name": "Food",
+        "count": 1
+      },
+      {
+        "name": "Documentary",
+        "count": 1
       }
+    ],
+    "withCounts": [
+      "Animation (1515)",
+      "Adventure (726)",
+      "Action (726)",
+      "Fantasy (573)",
+      "Drama (550)",
+      "Comedy (540)",
+      "Sci-Fi (354)",
+      "Kids (213)",
+      "Family (198)",
+      "Romance (194)",
+      "Supernatural (135)",
+      "Science Fiction (128)",
+      "Historical (126)",
+      "Mecha (120)",
+      "Mystery (110)",
+      "Slice of Life (92)",
+      "Military (90)",
+      "Magic (82)",
+      "Super Power (80)",
+      "Space (75)",
+      "School (74)",
+      "Horror (71)",
+      "Sports (68)",
+      "Music (65)",
+      "Psychological (50)",
+      "Friendship (49)",
+      "Thriller (41)",
+      "Crime (41)",
+      "Police (40)",
+      "Martial Arts (35)",
+      "Demons (30)",
+      "History (27)",
+      "Ecchi (23)",
+      "Dementia (22)",
+      "Mahou Shoujo (22)",
+      "Anime Influenced (22)",
+      "War (20)",
+      "Short (20)",
+      "Samurai (20)",
+      "Sport (20)",
+      "Parody (15)",
+      "Game (12)",
+      "Vampire (9)",
+      "Cars (9)",
+      "Racing (9)",
+      "Biography (8)",
+      "Harem (8)",
+      "TV Movie (8)",
+      "Gore (5)",
+      "Zombies (5)",
+      "Shounen Ai (3)",
+      "Political (3)",
+      "Gender Bender (2)",
+      "Medical (2)",
+      "Musical (2)",
+      "Youth (1)",
+      "Food (1)",
+      "Documentary (1)"
     ]
   }
 }
