@@ -429,6 +429,12 @@ const METADATA_OVERRIDES = {
   'tt38798044': { // The Case Book of Arne
     rating: 6.5,
     genres: ['Animation', 'Mystery']
+  },
+  'tt35348212': { // Kaijuu Sekai Seifuku (TV) - FAKE IMDB ID, real anime (MAL 60070)
+    genres: ['Slice of Life']
+  },
+  'tt37836273': { // Shuukan Ranobe Anime - FAKE IMDB ID, real anime (MAL 61846)
+    genres: ['Action', 'Romance']
   }
 };
 
