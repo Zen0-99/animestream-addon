@@ -346,8 +346,8 @@ function getManifest(showCounts = true) {
       configurable: true,
       configurationRequired: false
     },
-    logo: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/main/public/logo.png',
-    background: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/main/public/logo.png'
+    logo: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/public/logo.png',
+    background: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/public/logo.png'
   };
 }
 
