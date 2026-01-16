@@ -354,7 +354,7 @@ function getManifest(showCounts = true) {
 // ===== CONFIG PARSING =====
 
 function parseConfig(configStr) {
-  const config = { excludeLongRunning: true, showCounts: true };
+  const config = { excludeLongRunning: false, showCounts: true };
   
   if (!configStr) return config;
   
@@ -362,7 +362,7 @@ function parseConfig(configStr) {
   for (const param of params) {
     const [key, value] = param.split('=');
     if (key === 'excludeLongRunning') {
-      config.excludeLongRunning = value !== '0' && value !== 'false';
+      config.excludeLongRunning = value === '1' || value === 'true';
     }
     if (key === 'showCounts') {
       config.showCounts = value !== '0' && value !== 'false';

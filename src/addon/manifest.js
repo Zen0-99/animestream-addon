@@ -246,7 +246,7 @@ function getManifest(userConfig = {}) {
   
   return {
     id: 'community.animestream',
-    version: '1.2.0',  // Bumped version for streaming capability
+    version: '1.0.0',  // Bumped version for streaming capability
     name: 'AnimeStream',
     description: 'Comprehensive anime catalog with 7,000+ titles and streaming from AllAnime. Features Top Rated, Season Releases, Currently Airing, and Movies catalogs with genre filtering.',
     

@@ -23,6 +23,187 @@ const JSON_HEADERS = {
 
 const PAGE_SIZE = 100;
 
+// Configure page HTML (embedded for serverless deployment)
+const CONFIGURE_HTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AnimeStream Configuration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/public/logo.png">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --bg:#0A0F1C;
+    --card:#161737;
+    --fg:#EEF1F7;
+    --muted:#5F67AD;
+    --preview:#5A5F8F;
+    --box:#0E0B1F;
+    --primary:#3926A6;
+    --primary-hover:#5a42d6;
+    --border:rgba(255,255,255,.08);
+    --shadow:0 28px 96px rgba(0,0,0,.46);
+    --radius:26px;
+    --ctl-h:50px;
+  }
+  html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;}
+  .wrap{max-width:800px;margin:56px auto;padding:0 32px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:48px;}
+  h1{font-weight:800;font-size:38px;letter-spacing:.2px;margin:0 0 8px;text-align:center;}
+  .subtle{color:var(--muted);text-align:center;margin:-2px 0 34px;}
+  .stack{display:grid;grid-template-columns:1fr;row-gap:22px}
+  .section-title{font-weight:600;font-size:18px;margin:0 0 16px;color:var(--fg)}
+  .help{color:var(--muted);font-size:13px;margin-top:8px;line-height:1.45}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:18px;border:2px solid transparent;padding:14px 18px;min-width:220px;cursor:pointer;text-decoration:none;color:var(--fg);transition:transform .05s ease, box-shadow .2s ease, background .2s ease, border .2s ease;}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--primary);border-color:var(--primary)}
+  .btn-primary:hover{box-shadow:0 12px 38px rgba(57,38,166,.35);background:var(--primary-hover)}
+  .btn-outline{background:transparent;border-color:var(--primary);color:var(--fg)}
+  .btn-outline:hover{background:rgba(57,38,166,.08)}
+  .toggle-box{display:flex;align-items:center;gap:12px;background:var(--box);border:1px solid transparent;border-radius:16px;padding:12px 16px;height:var(--ctl-h);cursor:pointer;user-select:none;transition:all 0.2s ease}
+  .toggle-box:hover{border-color:rgba(57,38,166,.3)}
+  .toggle-box input{transform:scale(1.1);accent-color:var(--primary)}
+  .toggle-box .label{font-weight:600}
+  .buttons{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:32px}
+  @media (max-width: 720px){ .buttons{grid-template-columns:1fr} }
+  code.inline{background:var(--box);border:1px solid transparent;padding:12px;border-radius:8px;font-size:12px;color:var(--preview);display:flex;align-items:center;word-break:break-all;line-height:1.4;min-height:calc(2 * 1.4em);white-space:pre-wrap;overflow-wrap:anywhere}
+  .footline{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .manifest-container{flex: 1;min-width:0}
+  .manifest-label{color:var(--muted);font-size:14px;margin-bottom:8px;font-weight:500}
+  .divider{height:1px;background:var(--border);margin:24px 0}
+  .stat{display:inline-block;background:var(--box);padding:4px 12px;border-radius:8px;font-size:13px;color:var(--muted);margin-right:8px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>AnimeStream</h1>
+      <p class="subtle">Configure your anime addon settings</p>
+
+      <div class="stack">
+        <div>
+          <div class="section-title">Display Settings</div>
+          <div id="toggleShowCounts" class="toggle-box" role="button" tabindex="0" aria-pressed="true">
+            <input id="showCounts" type="checkbox" checked />
+            <div class="label">Show counts on filter options</div>
+          </div>
+          <div class="help">When enabled, genres and seasons will show item counts like "Action (1467)". Disable for cleaner display.</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div>
+          <div class="section-title">Currently Airing Settings</div>
+          <div id="toggleExcludeLongRunning" class="toggle-box" role="button" tabindex="0" aria-pressed="false">
+            <input id="excludeLongRunning" type="checkbox" />
+            <div class="label">Exclude long-running anime</div>
+          </div>
+          <div class="help">When enabled, hides long-running anime like One Piece, Detective Conan, etc. from the "Currently Airing" catalog. Only shows anime with fewer than 200 episodes that started in the last 10 years.</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div>
+          <div class="section-title">Database Stats</div>
+          <div id="stats"><span class="stat" id="statTotal">Loading...</span></div>
+        </div>
+      </div>
+
+      <div class="buttons">
+        <a id="installApp" class="btn btn-primary" style="width:100%">Install to Stremio</a>
+        <a id="installWeb" class="btn btn-outline" style="width:100%">Install to Web</a>
+      </div>
+
+      <div class="footline">
+        <div class="manifest-container">
+          <div class="manifest-label">Manifest URL:</div>
+          <code id="manifestUrl" class="inline"></code>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:24px;color:var(--muted);font-size:13px">
+      AnimeStream v1.0.0 • 7,000+ anime from Kitsu with IMDB matching
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    'use strict';
+    const originHost = window.location.origin;
+    const state = { showCounts: true, excludeLongRunning: false };
+    
+    try { Object.assign(state, JSON.parse(localStorage.getItem('animestream_config') || '{}')); } catch {}
+    
+    // Load from URL path config
+    const pathMatch = window.location.pathname.match(/^\\/([^\\/]+)\\/configure/);
+    if (pathMatch) {
+      const configStr = decodeURIComponent(pathMatch[1]);
+      configStr.split('&').forEach(part => {
+        const [key, value] = part.split('=');
+        if (key === 'showCounts') state.showCounts = value !== '0';
+        if (key === 'excludeLongRunning') state.excludeLongRunning = value === '1';
+      });
+    }
+    
+    const $ = sel => document.querySelector(sel);
+    const showCountsEl = $('#showCounts');
+    const excludeLongRunningEl = $('#excludeLongRunning');
+    const manifestEl = $('#manifestUrl');
+    const appBtn = $('#installApp');
+    const webBtn = $('#installWeb');
+    const statsEl = $('#stats');
+    
+    showCountsEl.checked = state.showCounts !== false;
+    excludeLongRunningEl.checked = state.excludeLongRunning === true;
+    
+    function persist() { localStorage.setItem('animestream_config', JSON.stringify(state)); }
+    
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/stats');
+        const data = await response.json();
+        statsEl.innerHTML = '<span class="stat">Total: ' + (data.totalAnime?.toLocaleString() || '?') + ' anime</span>' +
+          '<span class="stat">Series: ' + (data.totalSeries?.toLocaleString() || '?') + '</span>' +
+          '<span class="stat">Movies: ' + (data.totalMovies?.toLocaleString() || '?') + '</span>';
+      } catch { statsEl.innerHTML = '<span class="stat">7,000+ anime</span>'; }
+    }
+    
+    showCountsEl.onchange = () => { state.showCounts = showCountsEl.checked; persist(); rerender(); };
+    excludeLongRunningEl.onchange = () => { state.excludeLongRunning = excludeLongRunningEl.checked; persist(); rerender(); };
+    
+    function wireToggle(boxId, inputEl) {
+      const box = document.getElementById(boxId);
+      if (!box) return;
+      box.addEventListener('click', (e) => { if (e.target !== inputEl) { inputEl.checked = !inputEl.checked; inputEl.dispatchEvent(new Event('change')); } });
+      box.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputEl.checked = !inputEl.checked; inputEl.dispatchEvent(new Event('change')); } });
+    }
+    wireToggle('toggleShowCounts', showCountsEl);
+    wireToggle('toggleExcludeLongRunning', excludeLongRunningEl);
+    
+    function buildConfigPath() {
+      const parts = [];
+      if (!state.showCounts) parts.push('showCounts=0');
+      if (state.excludeLongRunning) parts.push('excludeLongRunning=1');
+      return parts.join('&');
+    }
+    
+    function rerender() {
+      const configPath = buildConfigPath();
+      const manifestUrl = configPath ? originHost + '/' + configPath + '/manifest.json' : originHost + '/manifest.json';
+      manifestEl.textContent = manifestUrl;
+      appBtn.href = configPath ? 'stremio://' + window.location.host + '/' + configPath + '/manifest.json' : 'stremio://' + window.location.host + '/manifest.json';
+      webBtn.href = 'https://web.stremio.com/#/addons?addon=' + encodeURIComponent(manifestUrl);
+    }
+    
+    fetchStats();
+    rerender();
+  })();
+  </script>
+</body>
+</html>`;
+
 // AllAnime API endpoint (direct integration, no separate worker)
 const ALLANIME_API = 'https://api.allanime.day/api';
 const ALLANIME_BASE = 'https://allanime.to';
@@ -422,12 +603,71 @@ function isSeriesType(anime) {
 
 // Filter out entries that are separate seasons of shows already covered by a main entry
 // These have IMDB IDs that cover all seasons, so we don't need separate catalog entries
+// NOTE: Only hide entries whose main series is ONGOING. If main is FINISHED but this season is ONGOING,
+// keep this entry visible so it appears in "Currently Airing"
 const HIDDEN_DUPLICATE_ENTRIES = new Set([
-  'mal-57658',    // JJK: The Culling Game Part 1 (covered by tt12343534 S3)
-  'tt36956670',   // JJK: Hidden Inventory/Premature Death (covered by tt12343534 S2)
-  'tt14331144',   // JJK 0 movie (keep as separate - this is a movie)
+  // Standalone season entries that should be hidden in favor of parent series
+  // These are separate catalog entries for seasons that are already covered by the main entry
+  'tt36956670',   // JJK: Hidden Inventory/Premature Death (S2 - covered by tt12343534)
+  'tt14331144',   // JJK 0 movie (covered by tt12343534 as a prequel movie)
+  'mal-57658',    // JJK: The Culling Game Part 1 (S3 - covered by tt12343534)
   // Add more as needed
 ]);
+
+// Map standalone season entries to their parent series ID
+// When a season is ONGOING, the parent series should appear in Currently Airing
+const SEASON_TO_PARENT_MAP = {
+  'mal-57658': 'tt12343534',    // JJK: The Culling Game Part 1 → Jujutsu Kaisen
+  'tt36956670': 'tt12343534',   // JJK: Hidden Inventory → Jujutsu Kaisen
+  'tt14331144': 'tt12343534',   // JJK 0 → Jujutsu Kaisen
+  // Add more mappings as needed
+};
+
+// Reverse map: parent ID → list of season IDs (for stream checking)
+const PARENT_TO_SEASONS_MAP = {
+  'tt12343534': ['mal-57658', 'tt36956670', 'tt14331144'],  // JJK seasons
+  // Add more mappings as needed
+};
+
+// Map parent ID → which season number is currently airing
+// Only this season will be streamable, older seasons redirect to Torrentio
+const PARENT_ONGOING_SEASON = {
+  'tt12343534': 3,  // JJK Season 3 (The Culling Game) is currently airing
+  // Add more as needed
+};
+
+// Get all parent IDs that have an ongoing season
+function getParentsWithOngoingSeasons(catalogData) {
+  const ongoingParents = new Set();
+  for (const anime of catalogData) {
+    if (anime.status === 'ONGOING') {
+      const parentId = SEASON_TO_PARENT_MAP[anime.id];
+      if (parentId) {
+        ongoingParents.add(parentId);
+      }
+    }
+  }
+  return ongoingParents;
+}
+
+// Check if a parent series has any ongoing season in the catalog
+function parentHasOngoingSeason(parentId, catalogData) {
+  const seasonIds = PARENT_TO_SEASONS_MAP[parentId];
+  if (!seasonIds) return false;
+  
+  for (const seasonId of seasonIds) {
+    const season = catalogData.find(a => a.id === seasonId);
+    if (season && season.status === 'ONGOING') {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Get the currently airing season number for a parent series
+function getOngoingSeasonNumber(parentId) {
+  return PARENT_ONGOING_SEASON[parentId] || null;
+}
 
 // Non-anime entries to filter from catalogs
 // These are Western animation, anime-inspired content, donghua (Chinese), or fan animations
@@ -978,21 +1218,62 @@ function handleSeasonReleases(catalogData, seasonFilter) {
 }
 
 function handleAiring(catalogData, genreFilter, config) {
-  let filtered = catalogData.filter(anime => 
-    anime.status === 'ONGOING' && isSeriesType(anime) && !isHiddenDuplicate(anime) && !isNonAnime(anime)
-  );
+  // Get parent series that have ongoing seasons (e.g., JJK main entry when S3 is airing)
+  const parentsWithOngoingSeasons = getParentsWithOngoingSeasons(catalogData);
   
-  // Apply exclude long-running filter
-  // This hides shows like One Piece, Naruto, Doraemon that have 100s of episodes
-  // Shows with < 100 episodes are never considered "long-running"
-  if (config.excludeLongRunning) {
+  // Build a map of parent ID → ongoing season's broadcast day
+  // This allows us to show the correct broadcast day for parent series
+  const parentBroadcastDays = {};
+  for (const anime of catalogData) {
+    if (anime.status === 'ONGOING') {
+      const parentId = SEASON_TO_PARENT_MAP[anime.id];
+      if (parentId && anime.broadcastDay) {
+        parentBroadcastDays[parentId] = anime.broadcastDay;
+      }
+    }
+  }
+  
+  // Include anime that are either:
+  // 1. Directly marked as ONGOING
+  // 2. Parent series that have an ongoing season (even if parent is marked FINISHED)
+  let filtered = catalogData.filter(anime => {
+    if (!isSeriesType(anime) || isHiddenDuplicate(anime) || isNonAnime(anime)) {
+      return false;
+    }
+    // Include if directly ONGOING or if it's a parent with an ongoing season
+    return anime.status === 'ONGOING' || parentsWithOngoingSeasons.has(anime.id);
+  });
+  
+  // For parent series with ongoing seasons, inherit the broadcast day from the ongoing season
+  filtered = filtered.map(anime => {
+    if (parentsWithOngoingSeasons.has(anime.id) && parentBroadcastDays[anime.id]) {
+      // Create a copy with updated broadcast day from the ongoing season
+      return { ...anime, broadcastDay: parentBroadcastDays[anime.id] };
+    }
+    return anime;
+  });
+  
+  // Apply exclude long-running filter ONLY if explicitly enabled
+  // By default, long-running anime like Detective Conan ARE included
+  if (config.excludeLongRunning === true) {
     const currentYear = new Date().getFullYear();
     filtered = filtered.filter(anime => {
       const year = anime.year || currentYear;
-      const episodeCount = anime.episodes || 0;
-      // Allow if: started in last 10 years AND has < 200 episodes
-      // OR if it has < 100 episodes (definitely not long-running)
-      return (year >= currentYear - 10 && episodeCount < 200) || episodeCount < 100;
+      const episodeCount = anime.episodes || null;
+      
+      // If anime started more than 10 years ago and we don't have episode data,
+      // assume it's long-running (safer to exclude than include)
+      if (year < currentYear - 10 && episodeCount === null) {
+        return false;
+      }
+      
+      // If we have episode data, use it
+      if (episodeCount !== null) {
+        return episodeCount < 100;
+      }
+      
+      // For recent anime without episode data, include them
+      return true;
     });
   }
   
@@ -1141,7 +1422,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null) {
     id: 'community.animestream',
     version: '1.0.0',
     name: 'AnimeStream',
-    description: 'Stream 7,000+ anime series and movies with powerful filtering by season, genre, airing day, and ratings. Sources are provided by AllAnime with both SUB and DUB options.',
+    description: 'All your favorite Anime series and movies with filtering by genre, seasonal releases, currently airing and ratings. Stream (exclusively) Currently Airing shows with both SUB and DUB options, courtesy of AllAnime.',
     // CRITICAL: Use explicit resource objects with types and idPrefixes
     // for Stremio to properly route stream requests
     resources: [
@@ -1227,7 +1508,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null) {
 // ===== CONFIG PARSING =====
 
 function parseConfig(configStr) {
-  const config = { excludeLongRunning: true, showCounts: true };
+  const config = { excludeLongRunning: false, showCounts: true };
   
   if (!configStr) return config;
   
@@ -1235,7 +1516,7 @@ function parseConfig(configStr) {
   for (const param of params) {
     const [key, value] = param.split('=');
     if (key === 'excludeLongRunning') {
-      config.excludeLongRunning = value !== '0' && value !== 'false';
+      config.excludeLongRunning = value === '1' || value === 'true';
     }
     if (key === 'showCounts') {
       config.showCounts = value !== '0' && value !== 'false';
@@ -1602,14 +1883,51 @@ async function handleMeta(catalog, type, id) {
 // Older/completed anime have plenty of other sources (Torrentio, etc.)
 
 const LONG_RUNNING_THRESHOLD = 100; // Episodes
-const MAX_EPISODES_FOR_LONG_RUNNING = 3; // Only serve newest N episodes
+const MAX_EPISODES_FOR_LONG_RUNNING = 3; // Only serve newest N episodes for very long-running series
+const MAX_EPISODES_FOR_AIRING_SEASON = 5; // For currently airing seasons, only serve the newest 5 episodes
+const RECENT_EPISODE_DAYS = 30; // Episodes released within this many days are considered "recent"
 
-function shouldServeAllAnimeStream(anime, requestedEpisode) {
+function shouldServeAllAnimeStream(anime, requestedEpisode, requestedSeason, catalogData, episodeReleaseDate, totalSeasonEpisodes) {
   // If not in our catalog, we can't determine status - allow stream
   if (!anime) return { allowed: true, reason: 'not in catalog' };
   
-  // Only serve streams for currently airing anime
-  if (anime.status !== 'ONGOING') {
+  // Check if this anime is directly ONGOING
+  let isAiring = anime.status === 'ONGOING';
+  
+  // If the anime itself is not ONGOING, check if it's a parent with an ongoing season
+  // This handles cases like JJK where the main entry (tt12343534) is FINISHED but S3 is ONGOING
+  if (!isAiring && catalogData) {
+    const hasOngoingSeason = parentHasOngoingSeason(anime.id, catalogData);
+    if (hasOngoingSeason) {
+      // Only allow streaming for the currently airing season, not older seasons
+      const ongoingSeasonNum = getOngoingSeasonNumber(anime.id);
+      if (ongoingSeasonNum && requestedSeason === ongoingSeasonNum) {
+        console.log(`[Stream] ${anime.name} S${requestedSeason} is the ongoing season - allowing stream`);
+        isAiring = true;
+      } else if (ongoingSeasonNum) {
+        console.log(`[Stream] ${anime.name} S${requestedSeason} requested but S${ongoingSeasonNum} is airing - blocking`);
+        return {
+          allowed: false,
+          reason: 'old_season',
+          message: `Only Season ${ongoingSeasonNum} is currently airing. Use Torrentio for older seasons.`
+        };
+      }
+    }
+  }
+  
+  // If we have episode release date info, check if this specific episode is recent
+  if (!isAiring && episodeReleaseDate) {
+    const releaseDate = new Date(episodeReleaseDate);
+    const now = new Date();
+    const daysSinceRelease = Math.floor((now - releaseDate) / (1000 * 60 * 60 * 24));
+    
+    if (daysSinceRelease <= RECENT_EPISODE_DAYS) {
+      console.log(`[Stream] Episode released ${daysSinceRelease} days ago - allowing stream`);
+      return { allowed: true, reason: 'recent_episode' };
+    }
+  }
+  
+  if (!isAiring) {
     return { 
       allowed: false, 
       reason: 'not_airing',
@@ -1617,7 +1935,21 @@ function shouldServeAllAnimeStream(anime, requestedEpisode) {
     };
   }
   
-  // For long-running anime, only serve newest 3 episodes
+  // For currently airing seasons with many episodes, only serve the newest 5 episodes
+  // This prevents serving 100+ episodes of long-running shows like One Piece
+  if (isAiring && totalSeasonEpisodes && totalSeasonEpisodes > MAX_EPISODES_FOR_AIRING_SEASON) {
+    const oldestAllowedEpisode = totalSeasonEpisodes - MAX_EPISODES_FOR_AIRING_SEASON + 1;
+    
+    if (requestedEpisode < oldestAllowedEpisode) {
+      return {
+        allowed: false,
+        reason: 'old_episode_in_airing_season',
+        message: `Only the newest ${MAX_EPISODES_FOR_AIRING_SEASON} episodes (${oldestAllowedEpisode}-${totalSeasonEpisodes}) are available for this ongoing series. Use Torrentio for older episodes.`
+      };
+    }
+  }
+  
+  // For long-running anime overall (e.g., 500+ total episodes), only serve newest 3 episodes
   const totalEpisodes = anime.episodeCount || anime.episodes || 0;
   if (totalEpisodes >= LONG_RUNNING_THRESHOLD) {
     const oldestAllowedEpisode = Math.max(1, totalEpisodes - MAX_EPISODES_FOR_LONG_RUNNING + 1);
@@ -1650,18 +1982,18 @@ async function handleStream(catalog, type, id) {
   // Find anime in catalog (supports tt*, mal-*, kitsu:* IDs)
   let anime = findAnimeById(catalog, baseId);
   let showId = null;
+  let totalSeasonEpisodes = null; // Will be set after finding the show on AllAnime
+  let availableEpisodes = null; // Actual released episodes, not planned
   
-  // Check if we should serve AllAnime streams for this anime
-  // This reduces server load by only serving streams for currently airing anime
-  const streamCheck = shouldServeAllAnimeStream(anime, episode);
-  if (!streamCheck.allowed) {
-    console.log(`Stream not served: ${streamCheck.reason} - ${anime?.name || baseId}`);
-    // Return a helpful message to the user
+  // Early check before expensive AllAnime lookups - don't pass episode count yet
+  const earlyCheck = shouldServeAllAnimeStream(anime, episode, season, catalog, null, null);
+  if (!earlyCheck.allowed) {
+    console.log(`Stream not served (early check): ${earlyCheck.reason} - ${anime?.name || baseId}`);
     return { 
       streams: [{
         name: 'AnimeStream',
-        title: `⚠️ ${streamCheck.message}`,
-        externalUrl: 'https://stremio.com' // Fallback URL
+        title: `⚠️ ${earlyCheck.message}`,
+        externalUrl: 'https://stremio.com'
       }]
     };
   }
@@ -1683,7 +2015,17 @@ async function handleStream(catalog, type, id) {
       if (showDetails) {
         showId = malId; // We have the MAL ID which AllAnime uses
         anime = { name: showDetails.name || showDetails.englishName || 'Unknown' };
-        console.log(`Found AllAnime show via MAL ID: ${anime.name}`);
+        totalSeasonEpisodes = showDetails.episodeCount || null;
+        
+        // Parse available episodes (e.g., {"sub": [1,2,3], "dub": [1,2]})
+        if (showDetails.availableEpisodesDetail) {
+          const available = showDetails.availableEpisodesDetail.sub || showDetails.availableEpisodesDetail.dub || [];
+          if (available.length > 0) {
+            availableEpisodes = Math.max(...available.map(ep => typeof ep === 'string' ? parseInt(ep) : ep));
+          }
+        }
+        
+        console.log(`Found AllAnime show via MAL ID: ${anime.name} (${availableEpisodes || totalSeasonEpisodes} episodes available)`);
       }
     } catch (err) {
       console.log(`AllAnime lookup by MAL ID failed: ${err.message}`);
@@ -1699,9 +2041,46 @@ async function handleStream(catalog, type, id) {
   // For multi-season shows, we need to find the correct season entry
   if (!showId) {
     showId = await findAllAnimeShowForSeason(anime.name, season);
+    
+    // Get episode count for the found show
+    if (showId) {
+      try {
+        const showDetails = await getAllAnimeShowDetails(showId);
+        totalSeasonEpisodes = showDetails?.episodeCount || null;
+        
+        // Parse available episodes
+        if (showDetails?.availableEpisodesDetail) {
+          const available = showDetails.availableEpisodesDetail.sub || showDetails.availableEpisodesDetail.dub || [];
+          if (available.length > 0) {
+            availableEpisodes = Math.max(...available.map(ep => typeof ep === 'string' ? parseInt(ep) : ep));
+          }
+        }
+        
+        console.log(`Found show ${showId} with ${availableEpisodes || totalSeasonEpisodes} episodes`);
+      } catch (err) {
+        console.log(`Could not get episode count: ${err.message}`);
+      }
+    }
   }
+  
   if (!showId) {
     return { streams: [] };
+  }
+  
+  // Use available episodes count if we have it, otherwise fall back to total planned episodes
+  const effectiveEpisodeCount = availableEpisodes || totalSeasonEpisodes;
+  
+  // Now do a final check with the episode count from AllAnime
+  const finalCheck = shouldServeAllAnimeStream(anime, episode, season, catalog, null, effectiveEpisodeCount);
+  if (!finalCheck.allowed) {
+    console.log(`Stream not served (final check): ${finalCheck.reason} - ${anime?.name || baseId}`);
+    return { 
+      streams: [{
+        name: 'AnimeStream',
+        title: `⚠️ ${finalCheck.message}`,
+        externalUrl: 'https://stremio.com'
+      }]
+    };
   }
   
   // Fetch streams directly from AllAnime API
@@ -1785,6 +2164,30 @@ export default {
           status: 502,
           headers: JSON_HEADERS
         });
+      }
+    }
+    
+    // Configure page
+    const configureMatch = path.match(/^(?:\/([^\/]+))?\/configure\/?$/);
+    if (configureMatch) {
+      return new Response(CONFIGURE_HTML, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', ...CORS_HEADERS }
+      });
+    }
+    
+    // API stats endpoint for configure page
+    if (path === '/api/stats') {
+      try {
+        const { catalog } = await fetchCatalogData();
+        const totalSeries = catalog.filter(a => isSeriesType(a)).length;
+        const totalMovies = catalog.filter(a => isMovieType(a)).length;
+        return new Response(JSON.stringify({
+          totalAnime: catalog.length,
+          totalSeries,
+          totalMovies
+        }), { headers: JSON_HEADERS });
+      } catch (error) {
+        return new Response(JSON.stringify({ totalAnime: 7000, totalSeries: 6500, totalMovies: 500 }), { headers: JSON_HEADERS });
       }
     }
     
