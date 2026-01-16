@@ -24,6 +24,9 @@ const JSON_HEADERS = {
 
 const PAGE_SIZE = 100;
 
+// AllAnime Scraper Worker URL
+const ALLANIME_SCRAPER = 'https://allanime-scraper.keypop3750.workers.dev';
+
 // ===== HELPER FUNCTIONS =====
 
 function parseGenreFilter(genre) {
@@ -277,10 +280,10 @@ function getManifest(showCounts = true) {
 
   return {
     id: 'community.animestream',
-    version: '1.1.0',
+    version: '1.2.0',
     name: 'AnimeStream',
-    description: 'Comprehensive anime catalog with 7,000+ titles.',
-    resources: ['catalog'],
+    description: 'Comprehensive anime catalog with 7,000+ titles. Streaming powered by AllAnime.',
+    resources: ['catalog', 'stream'],
     types: ['anime', 'series', 'movie'],
     idPrefixes: ['tt'],
     catalogs: [
@@ -367,6 +370,167 @@ function parseConfig(configStr) {
   }
   
   return config;
+}
+
+// ===== STREAM HANDLING =====
+
+// Levenshtein distance for fuzzy matching
+function levenshteinDistance(str1, str2) {
+  const m = str1.length;
+  const n = str2.length;
+  
+  if (m === 0) return n;
+  if (n === 0) return m;
+  
+  const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+  
+  return dp[m][n];
+}
+
+function stringSimilarity(str1, str2) {
+  const maxLen = Math.max(str1.length, str2.length);
+  if (maxLen === 0) return 100;
+  const distance = levenshteinDistance(str1, str2);
+  return ((maxLen - distance) / maxLen) * 100;
+}
+
+// Find anime by IMDB ID in database
+function findAnimeByImdbId(imdbId) {
+  return CATALOG_DATA.find(anime => anime.imdb_id === imdbId || anime.id === imdbId);
+}
+
+// Search AllAnime for matching show
+async function findAllAnimeShow(title) {
+  if (!title) return null;
+  
+  try {
+    const searchUrl = `${ALLANIME_SCRAPER}/?action=search&query=${encodeURIComponent(title)}&limit=10`;
+    const response = await fetch(searchUrl);
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    
+    // API returns 'results' not 'shows'
+    if (!data.results || data.results.length === 0) return null;
+    
+    // Normalize titles for matching
+    const normalizedTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Find best match using Levenshtein distance
+    let bestMatch = null;
+    let bestScore = 0;
+    
+    for (const show of data.results) {
+      let score = 0;
+      // API returns 'title' not 'name'
+      const showName = (show.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const nativeTitle = (show.nativeTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      // Exact match
+      if (showName === normalizedTitle) {
+        score = 100;
+      } else if (showName.includes(normalizedTitle) || normalizedTitle.includes(showName)) {
+        score = 80;
+      } else {
+        // Fuzzy match
+        const similarity = Math.max(
+          stringSimilarity(normalizedTitle, showName),
+          stringSimilarity(normalizedTitle, nativeTitle)
+        );
+        score = similarity * 0.9;
+      }
+      
+      if (show.type === 'TV') score += 3;
+      if (show.type === 'Movie' && show.episodes === '1') score += 2;
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = show;
+      }
+    }
+    
+    if (bestMatch && bestScore >= 60) {
+      return bestMatch.id;
+    }
+    
+    return null;
+  } catch (e) {
+    console.error('Search error:', e);
+    return null;
+  }
+}
+
+// Handle stream requests
+async function handleStream(type, id) {
+  // Parse ID: tt1234567 or tt1234567:1:5
+  const parts = id.split(':');
+  const imdbId = parts[0];
+  const episode = parts[2] ? parseInt(parts[2]) : 1;
+  
+  // Find anime in database
+  const anime = findAnimeByImdbId(imdbId);
+  if (!anime) {
+    return { streams: [] };
+  }
+  
+  // Search AllAnime for matching show
+  const showId = await findAllAnimeShow(anime.name);
+  if (!showId) {
+    return { streams: [] };
+  }
+  
+  // Fetch streams from AllAnime scraper
+  try {
+    const streamUrl = `${ALLANIME_SCRAPER}/?action=streams&showId=${showId}&episode=${episode}&extract=1`;
+    const response = await fetch(streamUrl);
+    
+    if (!response.ok) {
+      return { streams: [] };
+    }
+    
+    const data = await response.json();
+    
+    if (!data.streams || data.streams.length === 0) {
+      return { streams: [] };
+    }
+    
+    // Format streams for Stremio
+    const streams = data.streams
+      .filter(s => s.isDirect)
+      .map(stream => {
+        const streamObj = {
+          name: `AllAnime\n${stream.quality || 'HD'}`,
+          title: `${stream.provider || 'Direct'} - ${stream.type || 'SUB'}\n${stream.quality || 'HD'}`,
+          url: stream.url
+        };
+        
+        if (stream.behaviorHints) {
+          streamObj.behaviorHints = stream.behaviorHints;
+        }
+        
+        return streamObj;
+      });
+    
+    return { streams };
+  } catch (e) {
+    console.error('Stream fetch error:', e);
+    return { streams: [] };
+  }
 }
 
 // ===== MAIN HANDLER =====
@@ -462,6 +626,14 @@ export default {
       const metas = paginated.map(formatAnimeMeta);
       
       return new Response(JSON.stringify({ metas }), { headers: JSON_HEADERS });
+    }
+    
+    // Stream route: /stream/:type/:id.json or /{config}/stream/:type/:id.json
+    const streamMatch = path.match(/^(?:\/([^\/]+))?\/stream\/([^\/]+)\/(.+)\.json$/);
+    if (streamMatch) {
+      const [, configStr, type, id] = streamMatch;
+      const result = await handleStream(type, id);
+      return new Response(JSON.stringify(result), { headers: JSON_HEADERS });
     }
     
     // 404 for unknown routes

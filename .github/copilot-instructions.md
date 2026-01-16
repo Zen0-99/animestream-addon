@@ -4,97 +4,100 @@
 
 ## Architecture Overview
 
-AnimeStream is a **Stremio addon** for anime content that uses a **pre-bundled database** of anime from MyAnimeList via the Jikan API. It provides custom catalogs with instant loading and optional live metadata fetching.
+AnimeStream is a **Stremio addon** for anime content that uses a **pre-bundled database** of anime from Kitsu/IMDB with **integrated streaming via AllAnime**. It provides custom catalogs with instant loading and direct video streams.
 
 ### Core Layers
-- **Server** (`src/server.js`): Express HTTP server with Stremio-compatible routes
-- **Addon** (`src/addon/`): Manifest generation and Stremio protocol handlers (catalog, meta)
-- **API Client** (`src/api/`): Jikan API client for MyAnimeList data
-- **Database** (`data/`): Pre-bundled gzipped catalog for instant loading
-- **Utils** (`src/utils/`): Caching, HTTP client, helpers
+- **Cloudflare Worker** (`cloudflare-worker/worker-github.js`): Main deployed worker with catalog + streaming
+- **AllAnime Integration**: Direct GraphQL API calls for stream discovery
+- **Database** (`data/`): Pre-bundled catalog on GitHub for instant loading
+- **Scrapers** (`scrapers/`): Standalone AllAnime scraper (deprecated, now integrated)
 
 ### Critical Design Decisions
-1. **NOT using stremio-addon-sdk's serveHTTP** - bypasses 8KB manifest limit by serving directly via Express
-2. **Database-first architecture** - pre-bundled `catalog.json.gz` provides instant catalog loading
-3. **Jikan API** - Free, open-source MyAnimeList API (rate limited: 3 req/s, 60 req/min)
-4. **Catalog-focused** - Stream resolution handled by external addons (Torrentio, Comet, etc.)
+1. **NOT using stremio-addon-sdk's serveHTTP** - bypasses 8KB manifest limit
+2. **Database-first architecture** - pre-bundled `catalog.json` served from GitHub
+3. **Direct AllAnime API** - XOR-encrypted URLs (key=56), GraphQL API
+4. **No Worker-to-Worker calls** - AllAnime integration is inline to avoid Cloudflare error 1042
 
 ## Data Flow
 
 ```
-Catalog Request → databaseLoader → catalog handler → formatAnimeMeta → Stremio
-                        ↓ (if not in DB or need fresh data)
-                   Jikan API → Cache → Response
+Catalog Request → GitHub catalog.json → catalog handler → formatAnimeMeta → Stremio
+
+Stream Request → findAnimeByImdbId → searchAllAnime → fuzzy match → getEpisodeSources → Stremio
 ```
 
 ## Key Patterns
 
 ### Anime IDs
-All IDs follow pattern: `mal-{mal_id}` (e.g., `mal-1535` for Death Note)
-- `mal` prefix = MyAnimeList ID
-- Allows future expansion to other sources (anilist, kitsu, etc.)
+IDs use IMDB format: `tt{imdb_id}` (e.g., `tt13706018` for Spy x Family)
+- Stremio provides IDs as `tt13706018:1:5` (imdb:season:episode)
 
-### Stremio Meta Objects
-Always set `type: 'series'` for display, even though catalogs use custom `type: 'anime'`:
+### AllAnime XOR Decryption
+AllAnime encrypts source URLs with XOR key 56:
 ```js
-formatted.type = 'series';  // Required for Stremio to render properly
-formatted.runtime = `★ ${score.toFixed(1)}`;  // MAL score in runtime field
+function decryptSourceUrl(input) {
+  const str = input.startsWith('--') ? input.slice(2) : input;
+  let result = '';
+  for (let i = 0; i < str.length; i += 2) {
+    const num = parseInt(str.substr(i, 2), 16);
+    result += String.fromCharCode(num ^ 56);
+  }
+  return result;
+}
 ```
 
-## Jikan API Rate Limits
-- **3 requests per second**
-- **60 requests per minute**
-- All requests cached for 24 hours on Jikan's servers
-- Use built-in rate limiter to avoid 429 errors
-
-### Key Endpoints
-- `/top/anime?filter=airing` - Currently airing anime
-- `/top/anime?filter=upcoming` - Upcoming anime
-- `/top/anime` - Top rated anime
-- `/seasons/now` - Current season anime
-- `/seasons/{year}/{season}` - Seasonal anime
-- `/anime/{id}/full` - Full anime details with episodes
-- `/anime?q={query}` - Search anime
-- `/genres/anime` - List of anime genres
-
-## Database Management
-
-### Full Database Build (`scripts/build-database.js`)
-Fetches top anime from Jikan API (takes ~30-60 minutes due to rate limits):
-- Fetches top anime by score, popularity, and airing status
-- Gets full metadata with episodes for each anime
-- Outputs `data/catalog.json.gz` (compressed) and `data/catalog.json`
-- Generates `data/filter-options.json` with genre/studio/year counts
-
-```powershell
-node scripts/build-database.js           # Full build
-node scripts/build-database.js --test    # Test mode (100 items)
-```
-
-### Incremental Update (`scripts/update-database.js`)
-Daily updates to catch new content (~5-10 minutes):
-- Fetches currently airing and recently added anime
-- Updates existing entries with new episodes
-- Adds new series to database
+### Fuzzy Title Matching
+Uses Levenshtein distance to match catalog titles to AllAnime search results:
+- Exact match: 100 points
+- Substring match: 80 points  
+- Fuzzy similarity: 0-90 points
+- TV bonus: +3, Movie bonus: +2
+- Minimum score to accept: 60
 
 ## Catalog Types
 
-1. **Top Rated** - Sorted by MAL score
-2. **Popular** - Sorted by member count/popularity
-3. **Currently Airing** - Filter: airing status
-4. **This Season** - Current year/season
-5. **Upcoming** - Filter: upcoming
-6. **By Year** - Filtered by year with dropdown
-7. **By Genre** - Filtered by genre with dropdown
+1. **Top Rated** - Sorted by rating
+2. **Season Releases** - Current season anime
+3. **Currently Airing** - Anime currently broadcasting
+4. **Movies** - Anime movies
+
+## AllAnime GraphQL API
+
+### Search Anime
+```graphql
+query ($search: SearchInput!, $limit: Int) {
+  shows(search: $search, limit: $limit, translationType: "sub", countryOrigin: "JP") {
+    edges { _id name englishName nativeName type score status }
+  }
+}
+```
+
+### Get Episode Sources
+```graphql
+query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) {
+  episode(showId: $showId, translationType: $translationType, episodeString: $episodeString) {
+    episodeString sourceUrls
+  }
+}
+```
+
+## Deployment
+
+### Cloudflare Worker
+```powershell
+cd cloudflare-worker
+npx wrangler deploy  # Deploys worker-github.js
+```
+
+### Debug Endpoint
+`/debug/stream/{imdb_id}:{season}:{episode}` - Returns detailed matching info for troubleshooting
 
 ## Environment Variables
-- `PORT` - Server port (default: 7000)
-- `NODE_ENV` - Set to `production` for scheduled updates
+- `ENVIRONMENT` - Set to `production` on Cloudflare
 
-## Stremio Stream Integration
-AnimeStream is catalog-only by default. For streams, users should also install:
-- **Torrentio** - Torrent streams with debrid support
-- **Comet** - Debrid-focused torrent streams
-- **Anime4You** - Direct anime streaming
+## Stream Sources
+AllAnime provides direct video URLs from:
+- **fast4speed.rsvp** - Primary CDN (needs Referer header)
+- Other direct sources as fallback
 
-These addons will automatically provide streams for anime using the IMDB IDs we expose.
+Streams include both **SUB** (Japanese with subtitles) and **DUB** (English dubbed) when available.

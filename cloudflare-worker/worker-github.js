@@ -1018,6 +1018,13 @@ async function handleMeta(catalog, type, id) {
     return { meta: null };
   }
   
+  // Apply metadata overrides FIRST before any enrichment checks
+  if (METADATA_OVERRIDES[baseId]) {
+    console.log(`Applying metadata overrides for ${baseId}`);
+    const overrides = METADATA_OVERRIDES[baseId];
+    anime = { ...anime, ...overrides };
+  }
+  
   // Check if we need to enrich metadata from AllAnime/Cinemeta
   const needsEnrichment = isMetadataIncomplete(anime);
   
@@ -1089,6 +1096,9 @@ async function handleMeta(catalog, type, id) {
                           hasCinemeta && cinemeta.description ? cinemeta.description :
                           anime.description || '';
   
+  // Clean up description - remove source citations
+  const cleanDescription = stripHtml(bestDescription).replace(/\s*\(Source:.*?\)\s*$/i, '').trim();
+  
   const bestBackground = hasAllAnime && showDetails.banner ? showDetails.banner :
                          hasCinemeta && cinemeta.background ? cinemeta.background :
                          anime.background;
@@ -1103,7 +1113,7 @@ async function handleMeta(catalog, type, id) {
     name: anime.name, // Keep original name for consistency
     poster: bestPoster,
     background: bestBackground,
-    description: stripHtml(bestDescription),
+    description: cleanDescription,
     genres: bestGenres,
     runtime: anime.runtime,
     videos: episodes,
