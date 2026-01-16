@@ -403,7 +403,7 @@ const POSTER_OVERRIDES = {
   'tt37509404': 'https://media.kitsu.app/anime/49961/poster_image/large-3f376bc5492dd5de03c4d13295604f95.jpeg', // Gekkan! Nanmono Anime
   'tt29661543': 'https://media.kitsu.app/anime/47617/poster_image/large-40aa34b09277d1ec2f34c52e83b6538d.jpeg', // #holoEN3DRepeat
   'tt39281420': 'https://media.kitsu.app/anime/50253/poster_image/large-5c560f04c35705e046a945dfc5c5227f.jpeg', // Koala's Diary
-  'tt37836273': 'https://media.kitsu.app/anime/50151/poster_image/large-080388c03105dc38f36a583e79987434a0.jpeg', // Shuukan Ranobe Anime
+  'tt37836273': 'https://cdn.myanimelist.net/images/anime/1260/150826l.jpg', // Shuukan Ranobe Anime (from MAL)
 };
 
 // Manual metadata overrides for anime with incomplete catalog data
@@ -434,7 +434,16 @@ const METADATA_OVERRIDES = {
     genres: ['Slice of Life']
   },
   'tt37836273': { // Shuukan Ranobe Anime - FAKE IMDB ID, real anime (MAL 61846)
-    genres: ['Action', 'Romance']
+    runtime: '23 min',
+    genres: ['Action', 'Romance', 'Historical', 'Reincarnation', 'Super Power', 'Time Travel'],
+    background: 'https://cdn.myanimelist.net/images/anime/1260/150826.jpg',
+    cast: [
+      'Fairouz Ai',
+      'Yamashita Daiki',
+      'Ishikawa Kaito',
+      'Takayanagi Tomoyo',
+      'Nemoto Miyari'
+    ]
   }
 };
 
