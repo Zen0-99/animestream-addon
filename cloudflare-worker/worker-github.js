@@ -95,6 +95,14 @@ const CONFIGURE_HTML = `<!doctype html>
   .manifest-label{color:var(--muted);font-size:14px;margin-bottom:8px;font-weight:500}
   .divider{height:1px;background:var(--border);margin:24px 0}
   .stat{display:inline-block;background:var(--box);padding:4px 12px;border-radius:8px;font-size:13px;color:var(--muted);margin-right:8px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:12px 24px;border-radius:12px;font-weight:600;opacity:0;transition:opacity .3s;z-index:1000}
+  .toast.show{opacity:1}
+  .toast.error{background:#ef4444}
+  .copy-btn{background:var(--primary);border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;margin-left:8px}
+  .copy-btn:hover{background:var(--primary-hover)}
+  .manifest-row{display:flex;align-items:center;gap:8px}
+  .alt-install{margin-top:12px;font-size:13px;color:var(--muted);text-align:center}
+  .alt-install a{color:var(--primary);text-decoration:underline}
 </style>
 </head>
 <body>
@@ -139,8 +147,15 @@ const CONFIGURE_HTML = `<!doctype html>
       <div class="footline">
         <div class="manifest-container">
           <div class="manifest-label">Manifest URL:</div>
-          <code id="manifestUrl" class="inline"></code>
+          <div class="manifest-row">
+            <code id="manifestUrl" class="inline" style="flex:1"></code>
+            <button id="copyBtn" class="copy-btn">Copy</button>
+          </div>
         </div>
+      </div>
+
+      <div class="alt-install">
+        Install not working? <a id="altInstallLink" href="#" target="_blank">Click here to install via Stremio website</a>
       </div>
     </div>
 
@@ -148,6 +163,8 @@ const CONFIGURE_HTML = `<!doctype html>
       AnimeStream v1.0.0 • 7,000+ anime from Kitsu with IMDB matching
     </div>
   </div>
+
+  <div id="toast" class="toast"></div>
 
   <script>
   (function(){
@@ -175,11 +192,20 @@ const CONFIGURE_HTML = `<!doctype html>
     const appBtn = $('#installApp');
     const webBtn = $('#installWeb');
     const statsEl = $('#stats');
+    const copyBtn = $('#copyBtn');
+    const altInstallLink = $('#altInstallLink');
+    const toast = $('#toast');
     
     showCountsEl.checked = state.showCounts !== false;
     excludeLongRunningEl.checked = state.excludeLongRunning === true;
     
     function persist() { localStorage.setItem('animestream_config', JSON.stringify(state)); }
+    
+    function showToast(msg, isError) {
+      toast.textContent = msg;
+      toast.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => { toast.className = 'toast'; }, 3000);
+    }
     
     async function fetchStats() {
       try {
@@ -210,12 +236,54 @@ const CONFIGURE_HTML = `<!doctype html>
       return parts.join('&');
     }
     
+    // Copy manifest URL to clipboard
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(manifestEl.textContent);
+        showToast('Copied! Paste in Stremio > Addons > Add Addon URL');
+      } catch {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = manifestEl.textContent;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Copied! Paste in Stremio > Addons > Add Addon URL');
+      }
+    };
+    
+    // Handle install button click with error detection
+    appBtn.onclick = (e) => {
+      const stremioUrl = appBtn.href;
+      
+      // Try to detect if stremio:// protocol fails
+      // Set a flag, wait briefly, if page is still visible protocol likely failed
+      let didNavigate = false;
+      const checkTimer = setTimeout(() => {
+        if (!didNavigate && document.visibilityState === 'visible') {
+          showToast('Stremio not detected. Try Copy button or Web install.', true);
+        }
+      }, 1500);
+      
+      document.addEventListener('visibilitychange', function handler() {
+        if (document.visibilityState === 'hidden') {
+          didNavigate = true;
+          clearTimeout(checkTimer);
+          document.removeEventListener('visibilitychange', handler);
+        }
+      });
+      
+      // Let the default link behavior proceed
+    };
+    
     function rerender() {
       const configPath = buildConfigPath();
       const manifestUrl = configPath ? originHost + '/' + configPath + '/manifest.json' : originHost + '/manifest.json';
       manifestEl.textContent = manifestUrl;
       appBtn.href = configPath ? 'stremio://' + window.location.host + '/' + configPath + '/manifest.json' : 'stremio://' + window.location.host + '/manifest.json';
       webBtn.href = 'https://web.stremio.com/#/addons?addon=' + encodeURIComponent(manifestUrl);
+      altInstallLink.href = 'https://web.stremio.com/#/addons?addon=' + encodeURIComponent(manifestUrl);
     }
     
     fetchStats();
