@@ -7,12 +7,18 @@
 
 // ===== CONFIGURATION =====
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/data';
-const CACHE_TTL = 3600; // 1 hour cache for GitHub data (catalog only updates daily)
+const CACHE_TTL = 21600; // 6 hours cache for GitHub data (catalog is static, rarely updates)
 const ALLANIME_CACHE_TTL = 300; // 5 minutes for AllAnime API responses (streams change frequently)
 const MANIFEST_CACHE_TTL = 86400; // 24 hours for manifest (rarely changes)
-const CATALOG_HTTP_CACHE = 600; // 10 minutes HTTP cache for catalog responses
+const CATALOG_HTTP_CACHE = 21600; // 6 hours HTTP cache for catalog responses (static content)
 const STREAM_HTTP_CACHE = 120; // 2 minutes HTTP cache for stream responses
 const META_HTTP_CACHE = 3600; // 1 hour HTTP cache for meta responses
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW = 60000; // 1 minute window
+const RATE_LIMIT_MAX_REQUESTS = 120; // Max 120 requests per minute per IP (2/sec average)
+const rateLimitMap = new Map();
+const MAX_RATE_LIMIT_ENTRIES = 1000; // Prevent memory issues
 
 // ===== CONSTANTS =====
 const CORS_HEADERS = {
@@ -25,6 +31,39 @@ const JSON_HEADERS = {
   'Content-Type': 'application/json',
   ...CORS_HEADERS,
 };
+
+// ===== RATE LIMITING =====
+// Simple in-memory rate limiter per IP address
+function checkRateLimit(ip) {
+  const now = Date.now();
+  
+  // Cleanup old entries periodically
+  if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
+    const cutoff = now - RATE_LIMIT_WINDOW;
+    for (const [key, data] of rateLimitMap) {
+      if (data.windowStart < cutoff) {
+        rateLimitMap.delete(key);
+      }
+    }
+  }
+  
+  let entry = rateLimitMap.get(ip);
+  
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
+    // New window
+    entry = { windowStart: now, count: 1 };
+    rateLimitMap.set(ip, entry);
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
+  }
+  
+  entry.count++;
+  
+  if (entry.count > RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, remaining: 0, retryAfter: Math.ceil((entry.windowStart + RATE_LIMIT_WINDOW - now) / 1000) };
+  }
+  
+  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - entry.count };
+}
 
 // Helper to create JSON response with cache headers
 function jsonResponse(data, options = {}) {
@@ -1208,19 +1247,16 @@ function formatAnimeMeta(anime) {
   }
   
   // Poster priority:
-  // 1) Manual override
-  // 2) For recent anime (2025+), use catalog poster (Kitsu) as Metahub often doesn't have them
-  // 3) For older anime with IMDB ID, use Metahub (better CDN)
-  // 4) Fallback to catalog poster
+  // 1) Manual override (for broken posters)
+  // 2) Metahub poster if IMDB ID exists (has nice title overlay like Cinemeta)
+  // 3) Fallback to catalog poster (Kitsu) for non-IMDB content
   if (POSTER_OVERRIDES[anime.id]) {
     formatted.poster = POSTER_OVERRIDES[anime.id];
-  } else if (anime.year && anime.year >= 2025) {
-    // Keep catalog poster for recent anime - Metahub may not have them
-    // formatted.poster already set from anime object
   } else if (anime.id && anime.id.startsWith('tt')) {
+    // Always use Metahub for IMDB IDs - they have title overlays like Cinemeta
     formatted.poster = `https://images.metahub.space/poster/medium/${anime.id}/img`;
   }
-  // If no IMDB ID or recent year, keep the catalog poster (Kitsu)
+  // If no IMDB ID, keep the catalog poster (Kitsu)
   
   return formatted;
 }
@@ -2260,6 +2296,30 @@ export default {
     
     const url = new URL(request.url);
     const path = url.pathname;
+    
+    // Get client IP for rate limiting
+    const clientIP = request.headers.get('CF-Connecting-IP') || 
+                     request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || 
+                     'unknown';
+    
+    // Apply rate limiting (skip for static assets and health checks)
+    if (!path.startsWith('/proxy/') && path !== '/health' && path !== '/') {
+      const rateCheck = checkRateLimit(clientIP);
+      if (!rateCheck.allowed) {
+        return new Response(JSON.stringify({ 
+          error: 'Too many requests', 
+          message: 'Please slow down. Try again in a few seconds.',
+          retryAfter: rateCheck.retryAfter 
+        }), {
+          status: 429,
+          headers: {
+            ...JSON_HEADERS,
+            'Retry-After': String(rateCheck.retryAfter),
+            'X-RateLimit-Remaining': '0'
+          }
+        });
+      }
+    }
     
     // ===== VIDEO PROXY =====
     // Proxy video streams to add required Referer header
