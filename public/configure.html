@@ -24,13 +24,15 @@
     --pill-gap:10px;
   }
   html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;}
-  .wrap{max-width:800px;margin:56px auto;padding:0 32px;}
+  .wrap{max-width:1100px;margin:56px auto;padding:0 32px;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:48px;}
   h1{font-weight:800;font-size:38px;letter-spacing:.2px;margin:0 0 8px;text-align:center;}
   .subtle{color:var(--muted);text-align:center;margin:-2px 0 34px;}
   .stack{display:grid;grid-template-columns:1fr;row-gap:22px}
   label{display:block;font-weight:600;font-size:15px;margin:0 0 8px;}
   .section-title{font-weight:600;font-size:18px;margin:0 0 16px;color:var(--fg)}
+  .toggles-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
+  @media (max-width: 900px){ .toggles-row{grid-template-columns:1fr} }
   .control{width:100%;background:var(--box);color:var(--fg);border:1px solid transparent;border-radius:16px;padding:0 16px;height:var(--ctl-h);line-height:calc(var(--ctl-h) - 2px);outline:none;}
   .control:focus{box-shadow:0 0 0 2px rgba(57,38,166,.35);border-color:var(--primary)}
   .help{color:var(--muted);font-size:13px;margin-top:8px;line-height:1.45}
@@ -65,24 +67,23 @@
         <div>
           <div class="section-title">Display Settings</div>
           
-          <div id="toggleShowCounts" class="toggle-box" role="button" tabindex="0" aria-pressed="true">
-            <input id="showCounts" type="checkbox" checked />
-            <div class="label">Show counts on filter options</div>
-          </div>
-          <div class="help">When enabled, genres and seasons will show item counts like "Action (1467)". Disable for cleaner display.</div>
-        </div>
+          <div class="toggles-row">
+            <div>
+              <div id="toggleShowCounts" class="toggle-box" role="button" tabindex="0" aria-pressed="true">
+                <input id="showCounts" type="checkbox" checked />
+                <div class="label">Show counts on filter options</div>
+              </div>
+              <div class="help">When enabled, genres and seasons will show item counts like "Action (1467)". Disable for cleaner display.</div>
+            </div>
 
-        <div class="divider"></div>
-
-        <!-- Currently Airing Settings -->
-        <div>
-          <div class="section-title">Currently Airing Settings</div>
-          
-          <div id="toggleExcludeLongRunning" class="toggle-box" role="button" tabindex="0" aria-pressed="false">
-            <input id="excludeLongRunning" type="checkbox" />
-            <div class="label">Exclude long-running anime</div>
+            <div>
+              <div id="toggleExcludeLongRunning" class="toggle-box" role="button" tabindex="0" aria-pressed="false">
+                <input id="excludeLongRunning" type="checkbox" />
+                <div class="label">Exclude long-running anime</div>
+              </div>
+              <div class="help">Hide long-running anime like One Piece, Detective Conan, etc. from the "Currently Airing" catalog. Only shows anime relevant to this year.</div>
+            </div>
           </div>
-          <div class="help">Hide long-running anime like One Piece, Detective Conan, etc. from the "Currently Airing" catalog. Only shows anime relevant to this year.</div>
         </div>
 
         <div class="divider"></div>

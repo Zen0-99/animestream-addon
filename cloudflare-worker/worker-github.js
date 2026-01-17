@@ -48,12 +48,14 @@ const CONFIGURE_HTML = `<!doctype html>
     --ctl-h:50px;
   }
   html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;}
-  .wrap{max-width:800px;margin:56px auto;padding:0 32px;}
+  .wrap{max-width:1100px;margin:56px auto;padding:0 32px;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:48px;}
   h1{font-weight:800;font-size:38px;letter-spacing:.2px;margin:0 0 8px;text-align:center;}
   .subtle{color:var(--muted);text-align:center;margin:-2px 0 34px;}
   .stack{display:grid;grid-template-columns:1fr;row-gap:22px}
   .section-title{font-weight:600;font-size:18px;margin:0 0 16px;color:var(--fg)}
+  .toggles-row{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media (max-width: 900px){ .toggles-row{grid-template-columns:1fr} }
   .help{color:var(--muted);font-size:13px;margin-top:8px;line-height:1.45}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:18px;border:2px solid transparent;padding:14px 18px;min-width:220px;cursor:pointer;text-decoration:none;color:var(--fg);transition:transform .05s ease, box-shadow .2s ease, background .2s ease, border .2s ease;}
   .btn:active{transform:translateY(1px)}
@@ -84,25 +86,24 @@ const CONFIGURE_HTML = `<!doctype html>
       <div class="stack">
         <div>
           <div class="section-title">Display Settings</div>
-          <div id="toggleShowCounts" class="toggle-box" role="button" tabindex="0" aria-pressed="true">
-            <input id="showCounts" type="checkbox" checked />
-            <div class="label">Show counts on filter options</div>
+          <div class="toggles-row">
+            <div>
+              <div id="toggleShowCounts" class="toggle-box" role="button" tabindex="0" aria-pressed="true">
+                <input id="showCounts" type="checkbox" checked />
+                <div class="label">Show counts on filter options</div>
+              </div>
+              <div class="help">When enabled, genres and seasons will show item counts like "Action (1467)". Disable for cleaner display.</div>
+            </div>
+
+            <div>
+              <div id="toggleExcludeLongRunning" class="toggle-box" role="button" tabindex="0" aria-pressed="false">
+                <input id="excludeLongRunning" type="checkbox" />
+                <div class="label">Exclude long-running anime</div>
+              </div>
+              <div class="help">Hide long-running anime like One Piece, Detective Conan, etc. from the "Currently Airing" catalog.</div>
+            </div>
           </div>
-          <div class="help">When enabled, genres and seasons will show item counts like "Action (1467)". Disable for cleaner display.</div>
         </div>
-
-        <div class="divider"></div>
-
-        <div>
-          <div class="section-title">Currently Airing Settings</div>
-          <div id="toggleExcludeLongRunning" class="toggle-box" role="button" tabindex="0" aria-pressed="false">
-            <input id="excludeLongRunning" type="checkbox" />
-            <div class="label">Exclude long-running anime</div>
-          </div>
-          <div class="help">When enabled, hides long-running anime like One Piece, Detective Conan, etc. from the "Currently Airing" catalog. Only shows anime with fewer than 200 episodes that started in the last 10 years.</div>
-        </div>
-
-        <div class="divider"></div>
 
         <div>
           <div class="section-title">Database Stats</div>
@@ -1501,7 +1502,11 @@ function getManifest(filterOptions, showCounts = true, catalogData = null) {
       configurationRequired: false
     },
     logo: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/public/logo.png',
-    background: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/public/logo.png'
+    background: 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/public/logo.png',
+    stremioAddonsConfig: {
+      issuer: 'https://stremio-addons.net',
+      signature: 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..i9a29ppmiWk7ftZEtiYlHA.Ap8MrBWPmOgs1DNA_uqUsIGWQ3Ag2b3WFVLKE5pq0jiCtNVbW0Xd_u7ot84l_iLZ0jz9eoMugUJOc7036mArojkYNPxLDCuKXoH-2uQoQ54XD__pgFh-KVxC240T9y6B.1Vk_SHRoLAUJobX8botduw'
+    }
   };
 }
 
