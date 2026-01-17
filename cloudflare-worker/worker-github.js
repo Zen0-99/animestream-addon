@@ -7,7 +7,12 @@
 
 // ===== CONFIGURATION =====
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/data';
-const CACHE_TTL = 600; // 10 minutes cache for GitHub data (balance between freshness and performance)
+const CACHE_TTL = 3600; // 1 hour cache for GitHub data (catalog only updates daily)
+const ALLANIME_CACHE_TTL = 300; // 5 minutes for AllAnime API responses (streams change frequently)
+const MANIFEST_CACHE_TTL = 86400; // 24 hours for manifest (rarely changes)
+const CATALOG_HTTP_CACHE = 600; // 10 minutes HTTP cache for catalog responses
+const STREAM_HTTP_CACHE = 120; // 2 minutes HTTP cache for stream responses
+const META_HTTP_CACHE = 3600; // 1 hour HTTP cache for meta responses
 
 // ===== CONSTANTS =====
 const CORS_HEADERS = {
@@ -20,6 +25,21 @@ const JSON_HEADERS = {
   'Content-Type': 'application/json',
   ...CORS_HEADERS,
 };
+
+// Helper to create JSON response with cache headers
+function jsonResponse(data, options = {}) {
+  const { maxAge = 0, staleWhileRevalidate = 0, status = 200 } = options;
+  const headers = { ...JSON_HEADERS };
+  
+  if (maxAge > 0) {
+    // Cache-Control: public allows CDN caching, s-maxage for edge cache, stale-while-revalidate for background refresh
+    headers['Cache-Control'] = `public, max-age=${maxAge}, s-maxage=${maxAge}${staleWhileRevalidate ? `, stale-while-revalidate=${staleWhileRevalidate}` : ''}`;
+  } else {
+    headers['Cache-Control'] = 'no-cache';
+  }
+  
+  return new Response(JSON.stringify(data), { status, headers });
+}
 
 const PAGE_SIZE = 100;
 
@@ -210,9 +230,37 @@ const ALLANIME_API = 'https://api.allanime.day/api';
 const ALLANIME_BASE = 'https://allanime.to';
 
 // ===== DATA CACHE (in-memory per worker instance) =====
+// Simple in-memory cache - each worker instance maintains its own cache
+// Combined with HTTP Cache-Control headers, this provides multi-layer caching:
+// 1. In-memory cache (instant, per worker instance)
+// 2. Cloudflare edge cache (via Cache-Control headers, shared across requests)
+// 3. Browser cache (via Cache-Control headers, per user)
 let catalogCache = null;
 let filterOptionsCache = null;
 let cacheTimestamp = 0;
+
+// AllAnime search results cache (reduces API calls for repeated searches)
+const allAnimeSearchCache = new Map();
+const ALLANIME_SEARCH_CACHE_TTL = 300000; // 5 minutes
+const MAX_SEARCH_CACHE_SIZE = 100;
+
+// Helper to get/set AllAnime search cache
+function getCachedSearch(query) {
+  const cached = allAnimeSearchCache.get(query.toLowerCase());
+  if (cached && Date.now() - cached.time < ALLANIME_SEARCH_CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedSearch(query, data) {
+  // Limit cache size to prevent memory issues
+  if (allAnimeSearchCache.size >= MAX_SEARCH_CACHE_SIZE) {
+    const oldestKey = allAnimeSearchCache.keys().next().value;
+    allAnimeSearchCache.delete(oldestKey);
+  }
+  allAnimeSearchCache.set(query.toLowerCase(), { data, time: Date.now() });
+}
 
 // ===== ALLANIME API HELPERS =====
 
@@ -280,8 +328,17 @@ function isDirectStream(url) {
 
 /**
  * Search AllAnime for shows matching a query
+ * Uses in-memory cache to reduce API calls
  */
 async function searchAllAnime(searchQuery, limit = 10) {
+  // Check cache first
+  const cacheKey = `${searchQuery}:${limit}`;
+  const cached = getCachedSearch(cacheKey);
+  if (cached) {
+    console.log(`AllAnime search cache hit: "${searchQuery}"`);
+    return cached;
+  }
+
   const query = `
     query ($search: SearchInput!, $limit: Int, $page: Int, $translationType: VaildTranslationTypeEnumType, $countryOrigin: VaildCountryOriginEnumType) {
       shows(search: $search, limit: $limit, page: $page, translationType: $translationType, countryOrigin: $countryOrigin) {
@@ -311,13 +368,17 @@ async function searchAllAnime(searchQuery, limit = 10) {
     const data = await response.json();
     const shows = data?.data?.shows?.edges || [];
     
-    return shows.map(show => ({
+    const results = shows.map(show => ({
       id: show._id,
       title: show.englishName || show.name,
       nativeTitle: show.nativeName,
       type: show.type,
       score: show.score,
     }));
+    
+    // Cache the results
+    setCachedSearch(cacheKey, results);
+    return results;
   } catch (e) {
     console.error('AllAnime search error:', e.message);
     return [];
@@ -2186,13 +2247,14 @@ export default {
         const { catalog } = await fetchCatalogData();
         const totalSeries = catalog.filter(a => isSeriesType(a)).length;
         const totalMovies = catalog.filter(a => isMovieType(a)).length;
-        return new Response(JSON.stringify({
+        // Stats cached for 1 hour
+        return jsonResponse({
           totalAnime: catalog.length,
           totalSeries,
           totalMovies
-        }), { headers: JSON_HEADERS });
+        }, { maxAge: 3600 });
       } catch (error) {
-        return new Response(JSON.stringify({ totalAnime: 7000, totalSeries: 6500, totalMovies: 500 }), { headers: JSON_HEADERS });
+        return jsonResponse({ totalAnime: 7000, totalSeries: 6500, totalMovies: 500 }, { maxAge: 3600 });
       }
     }
     
@@ -2200,18 +2262,19 @@ export default {
     if (path === '/health' || path === '/') {
       try {
         const { catalog } = await fetchCatalogData();
-        return new Response(JSON.stringify({
+        // Health check cached for 5 minutes
+        return jsonResponse({
           status: 'healthy',
           database: 'loaded',
           source: 'github',
           totalAnime: catalog.length,
           cacheAge: Math.floor((Date.now() - cacheTimestamp) / 1000) + 's'
-        }), { headers: JSON_HEADERS });
+        }, { maxAge: 300 });
       } catch (error) {
-        return new Response(JSON.stringify({
+        return jsonResponse({
           status: 'error',
           message: error.message
-        }), { status: 500, headers: JSON_HEADERS });
+        }, { status: 500 });
       }
     }
     
@@ -2222,17 +2285,21 @@ export default {
       catalog = data.catalog;
       filterOptions = data.filterOptions;
     } catch (error) {
-      return new Response(JSON.stringify({ 
+      return jsonResponse({ 
         error: 'Failed to load catalog data',
         message: error.message 
-      }), { status: 503, headers: JSON_HEADERS });
+      }, { status: 503 });
     }
     
     // Parse routes
     const manifestMatch = path.match(/^(?:\/([^\/]+))?\/manifest\.json$/);
     if (manifestMatch) {
       const config = parseConfig(manifestMatch[1]);
-      return new Response(JSON.stringify(getManifest(filterOptions, config.showCounts, catalog)), { headers: JSON_HEADERS });
+      // Manifest cached for 24 hours - rarely changes
+      return jsonResponse(getManifest(filterOptions, config.showCounts, catalog), { 
+        maxAge: MANIFEST_CACHE_TTL, 
+        staleWhileRevalidate: 3600 
+      });
     }
     
     const catalogMatch = path.match(/^(?:\/([^\/]+))?\/catalog\/([^\/]+)\/([^\/]+)(?:\/(.+))?\.json$/);
@@ -2255,7 +2322,7 @@ export default {
       // Handle search catalogs
       if (id === 'anime-search' || id === 'anime-series-search' || id === 'anime-movies-search') {
         if (!extra.search) {
-          return new Response(JSON.stringify({ metas: [] }), { headers: JSON_HEADERS });
+          return jsonResponse({ metas: [] }, { maxAge: 60 });
         }
         
         // Determine target type based on catalog id
@@ -2270,12 +2337,13 @@ export default {
         const paginated = results.slice(skip, skip + PAGE_SIZE);
         const metas = paginated.map(formatAnimeMeta);
         
-        return new Response(JSON.stringify({ metas }), { headers: JSON_HEADERS });
+        // Search results cached for 10 minutes
+        return jsonResponse({ metas }, { maxAge: CATALOG_HTTP_CACHE, staleWhileRevalidate: 300 });
       }
       
       // Handle regular catalogs
       if (type !== 'anime') {
-        return new Response(JSON.stringify({ metas: [] }), { headers: JSON_HEADERS });
+        return jsonResponse({ metas: [] }, { maxAge: 60 });
       }
       
       let catalogResult;
@@ -2293,14 +2361,15 @@ export default {
           catalogResult = handleMovies(catalog, extra.genre);
           break;
         default:
-          return new Response(JSON.stringify({ metas: [] }), { headers: JSON_HEADERS });
+          return jsonResponse({ metas: [] }, { maxAge: 60 });
       }
       
       const skip = parseInt(extra.skip) || 0;
       const paginated = catalogResult.slice(skip, skip + PAGE_SIZE);
       const metas = paginated.map(formatAnimeMeta);
       
-      return new Response(JSON.stringify({ metas }), { headers: JSON_HEADERS });
+      // Catalog results cached for 10 minutes - good balance for airing shows
+      return jsonResponse({ metas }, { maxAge: CATALOG_HTTP_CACHE, staleWhileRevalidate: 300 });
     }
     
     // Debug route for stream tracing
@@ -2405,7 +2474,8 @@ export default {
     if (metaMatch) {
       const [, configStr, type, id] = metaMatch;
       const result = await handleMeta(catalog, type, id);
-      return new Response(JSON.stringify(result), { headers: JSON_HEADERS });
+      // Meta cached for 1 hour - episode lists don't change often
+      return jsonResponse(result, { maxAge: META_HTTP_CACHE, staleWhileRevalidate: 600 });
     }
     
     // Stream route: /stream/:type/:id.json or /{config}/stream/:type/:id.json
@@ -2413,13 +2483,11 @@ export default {
     if (streamMatch) {
       const [, configStr, type, id] = streamMatch;
       const result = await handleStream(catalog, type, id);
-      return new Response(JSON.stringify(result), { headers: JSON_HEADERS });
+      // Streams cached for 2 minutes - sources can change
+      return jsonResponse(result, { maxAge: STREAM_HTTP_CACHE, staleWhileRevalidate: 60 });
     }
     
     // 404 for unknown routes
-    return new Response(JSON.stringify({ error: 'Not found' }), { 
-      status: 404, 
-      headers: JSON_HEADERS 
-    });
+    return jsonResponse({ error: 'Not found' }, { status: 404 });
   }
 };
