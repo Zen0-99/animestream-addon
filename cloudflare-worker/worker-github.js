@@ -142,6 +142,13 @@ const CONFIGURE_HTML = `<!doctype html>
   .manifest-row{display:flex;align-items:center;gap:8px}
   .alt-install{margin-top:12px;font-size:13px;color:var(--muted);text-align:center}
   .alt-install a{color:var(--primary);text-decoration:underline}
+  .catalog-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-top:8px}
+  @media (max-width: 720px){ .catalog-grid{grid-template-columns:repeat(2, 1fr)} }
+  .catalog-item{display:flex;align-items:center;gap:8px;background:var(--box);border:2px solid transparent;border-radius:12px;padding:10px 14px;cursor:pointer;transition:all 0.2s ease}
+  .catalog-item:hover{border-color:rgba(57,38,166,.3)}
+  .catalog-item.hidden{opacity:0.5;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05)}
+  .catalog-item input{accent-color:var(--primary);transform:scale(1.1)}
+  .catalog-item .name{font-weight:600;font-size:14px}
 </style>
 </head>
 <body>
@@ -170,6 +177,29 @@ const CONFIGURE_HTML = `<!doctype html>
               <div class="help">Hide long-running anime like One Piece, Detective Conan, etc. from the "Currently Airing" catalog.</div>
             </div>
           </div>
+        </div>
+
+        <div>
+          <div class="section-title">Hide Catalogs</div>
+          <div class="catalog-grid" id="catalogGrid">
+            <label class="catalog-item" data-key="top">
+              <input type="checkbox" checked />
+              <span class="name">Top Rated</span>
+            </label>
+            <label class="catalog-item" data-key="season">
+              <input type="checkbox" checked />
+              <span class="name">Season Releases</span>
+            </label>
+            <label class="catalog-item" data-key="airing">
+              <input type="checkbox" checked />
+              <span class="name">Currently Airing</span>
+            </label>
+            <label class="catalog-item" data-key="movies">
+              <input type="checkbox" checked />
+              <span class="name">Movies</span>
+            </label>
+          </div>
+          <div class="help">Uncheck catalogs to hide them from Stremio. At least one must remain visible.</div>
         </div>
 
         <div>
@@ -209,7 +239,7 @@ const CONFIGURE_HTML = `<!doctype html>
   (function(){
     'use strict';
     const originHost = window.location.origin;
-    const state = { showCounts: true, excludeLongRunning: false };
+    const state = { showCounts: true, excludeLongRunning: false, hiddenCatalogs: [] };
     
     try { Object.assign(state, JSON.parse(localStorage.getItem('animestream_config') || '{}')); } catch {}
     
@@ -221,12 +251,14 @@ const CONFIGURE_HTML = `<!doctype html>
         const [key, value] = part.split('=');
         if (key === 'showCounts') state.showCounts = value !== '0';
         if (key === 'excludeLongRunning') state.excludeLongRunning = value === '1';
+        if (key === 'hc' && value) state.hiddenCatalogs = value.split(',').filter(c => ['top','season','airing','movies'].includes(c));
       });
     }
     
     const $ = sel => document.querySelector(sel);
     const showCountsEl = $('#showCounts');
     const excludeLongRunningEl = $('#excludeLongRunning');
+    const catalogGrid = $('#catalogGrid');
     const manifestEl = $('#manifestUrl');
     const appBtn = $('#installApp');
     const webBtn = $('#installWeb');
@@ -237,6 +269,15 @@ const CONFIGURE_HTML = `<!doctype html>
     
     showCountsEl.checked = state.showCounts !== false;
     excludeLongRunningEl.checked = state.excludeLongRunning === true;
+    
+    // Initialize catalog checkboxes
+    catalogGrid.querySelectorAll('.catalog-item').forEach(item => {
+      const key = item.dataset.key;
+      const checkbox = item.querySelector('input');
+      const isHidden = state.hiddenCatalogs.includes(key);
+      checkbox.checked = !isHidden;
+      if (isHidden) item.classList.add('hidden');
+    });
     
     function persist() { localStorage.setItem('animestream_config', JSON.stringify(state)); }
     
@@ -259,6 +300,35 @@ const CONFIGURE_HTML = `<!doctype html>
     showCountsEl.onchange = () => { state.showCounts = showCountsEl.checked; persist(); rerender(); };
     excludeLongRunningEl.onchange = () => { state.excludeLongRunning = excludeLongRunningEl.checked; persist(); rerender(); };
     
+    // Catalog checkbox handlers
+    catalogGrid.querySelectorAll('.catalog-item').forEach(item => {
+      const checkbox = item.querySelector('input');
+      checkbox.addEventListener('change', () => {
+        const key = item.dataset.key;
+        // Count currently visible catalogs
+        const visibleCount = 4 - state.hiddenCatalogs.length;
+        
+        if (!checkbox.checked) {
+          // Trying to hide - ensure at least 1 remains visible
+          if (visibleCount <= 1) {
+            checkbox.checked = true;
+            showToast('At least one catalog must remain visible', true);
+            return;
+          }
+          if (!state.hiddenCatalogs.includes(key)) {
+            state.hiddenCatalogs.push(key);
+          }
+          item.classList.add('hidden');
+        } else {
+          // Unhiding
+          state.hiddenCatalogs = state.hiddenCatalogs.filter(c => c !== key);
+          item.classList.remove('hidden');
+        }
+        persist();
+        rerender();
+      });
+    });
+    
     function wireToggle(boxId, inputEl) {
       const box = document.getElementById(boxId);
       if (!box) return;
@@ -272,6 +342,7 @@ const CONFIGURE_HTML = `<!doctype html>
       const parts = [];
       if (!state.showCounts) parts.push('showCounts=0');
       if (state.excludeLongRunning) parts.push('excludeLongRunning=1');
+      if (state.hiddenCatalogs.length > 0) parts.push('hc=' + state.hiddenCatalogs.join(','));
       return parts.join('&');
     }
     
@@ -1254,17 +1325,13 @@ function formatAnimeMeta(anime) {
   }
   
   // Poster priority:
-  // 1) Manual override (for broken posters)
-  // 2) For 2025+ anime, keep Kitsu poster (Metahub often doesn't have recent content)
-  // 3) For older anime with IMDB ID, use Metahub (has nice title overlay like Cinemeta)
-  // 4) Fallback to catalog poster (Kitsu) for non-IMDB content
+  // 1) Manual override (for specific broken posters via POSTER_OVERRIDES)
+  // 2) Metahub for any anime with IMDB ID (has nice title overlay like Cinemeta)
+  // 3) Fallback to catalog poster (Kitsu) for non-IMDB content
   if (POSTER_OVERRIDES[anime.id]) {
     formatted.poster = POSTER_OVERRIDES[anime.id];
-  } else if (anime.year && anime.year >= 2025) {
-    // Keep catalog poster (Kitsu) for recent anime - Metahub doesn't have them yet
-    // formatted.poster already set from anime object
   } else if (anime.id && anime.id.startsWith('tt')) {
-    // Use Metahub for older IMDB content - has title overlays like Cinemeta
+    // Use Metahub for all IMDB content - has title overlays like Cinemeta
     formatted.poster = `https://images.metahub.space/poster/medium/${anime.id}/img`;
   }
   // If no IMDB ID, keep the catalog poster (Kitsu)
@@ -1577,7 +1644,7 @@ function generateSeasonOptions(filterOptions, currentSeason, showCounts, catalog
 
 // ===== MANIFEST =====
 
-function getManifest(filterOptions, showCounts = true, catalogData = null) {
+function getManifest(filterOptions, showCounts = true, catalogData = null, hiddenCatalogs = []) {
   const genreOptions = showCounts && filterOptions.genres?.withCounts 
     ? filterOptions.genres.withCounts.filter(g => !g.toLowerCase().startsWith('animation'))
     : (filterOptions.genres?.list || []).filter(g => g.toLowerCase() !== 'animation');
@@ -1595,11 +1662,86 @@ function getManifest(filterOptions, showCounts = true, catalogData = null) {
     ? ['Upcoming', 'New Releases', ...filterOptions.movieGenres.withCounts.filter(g => !g.toLowerCase().startsWith('animation'))]
     : ['Upcoming', 'New Releases', ...(filterOptions.movieGenres?.list || []).filter(g => g.toLowerCase() !== 'animation')];
 
+  // Build catalog list, filtering out hidden catalogs
+  const allCatalogs = [
+    {
+      id: 'anime-top-rated',
+      type: 'anime',
+      name: 'Top Rated',
+      key: 'top',
+      extra: [
+        { name: 'genre', options: genreOptions, isRequired: false },
+        { name: 'skip', isRequired: false }
+      ]
+    },
+    {
+      id: 'anime-season-releases',
+      type: 'anime',
+      name: 'Season Releases',
+      key: 'season',
+      extra: [
+        { name: 'genre', options: seasonOptions, isRequired: false },
+        { name: 'skip', isRequired: false }
+      ]
+    },
+    {
+      id: 'anime-airing',
+      type: 'anime',
+      name: 'Currently Airing',
+      key: 'airing',
+      extra: [
+        { name: 'genre', options: weekdayOptions, isRequired: false },
+        { name: 'skip', isRequired: false }
+      ]
+    },
+    {
+      id: 'anime-movies',
+      type: 'anime',
+      name: 'Movies',
+      key: 'movies',
+      extra: [
+        { name: 'genre', options: movieOptions, isRequired: false },
+        { name: 'skip', isRequired: false }
+      ]
+    }
+  ];
+  
+  // Filter out hidden catalogs (but always keep at least 1)
+  let visibleCatalogs = allCatalogs.filter(c => !hiddenCatalogs.includes(c.key));
+  if (visibleCatalogs.length === 0) {
+    visibleCatalogs = [allCatalogs[0]]; // Fallback to Top Rated
+  }
+  
+  // Remove the 'key' property before returning (it's internal)
+  const catalogs = visibleCatalogs.map(({ key, ...rest }) => rest);
+  
+  // Always include search catalogs (can't be hidden)
+  catalogs.push(
+    {
+      id: 'anime-series-search',
+      type: 'series',
+      name: 'Anime Series',
+      extra: [
+        { name: 'search', isRequired: true },
+        { name: 'skip' }
+      ]
+    },
+    {
+      id: 'anime-movies-search',
+      type: 'movie',
+      name: 'Anime Movies',
+      extra: [
+        { name: 'search', isRequired: true },
+        { name: 'skip' }
+      ]
+    }
+  );
+
   return {
     id: 'community.animestream',
-    version: '1.0.0',
+    version: '1.1.0',
     name: 'AnimeStream',
-    description: 'All your favorite Anime series and movies with filtering by genre, seasonal releases, currently airing and ratings. Stream (exclusively) Currently Airing shows with both SUB and DUB options, courtesy of AllAnime.',
+    description: 'All your favorite Anime series and movies with filtering by genre, seasonal releases, currently airing and ratings. Stream both SUB and DUB options via AllAnime.',
     // CRITICAL: Use explicit resource objects with types and idPrefixes
     // for Stremio to properly route stream requests
     resources: [
@@ -1617,62 +1759,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null) {
     ],
     types: ['anime', 'series', 'movie'],
     idPrefixes: ['tt', 'kitsu', 'mal'],
-    catalogs: [
-      {
-        id: 'anime-top-rated',
-        type: 'anime',
-        name: 'Top Rated',
-        extra: [
-          { name: 'genre', options: genreOptions, isRequired: false },
-          { name: 'skip', isRequired: false }
-        ]
-      },
-      {
-        id: 'anime-season-releases',
-        type: 'anime',
-        name: 'Season Releases',
-        extra: [
-          { name: 'genre', options: seasonOptions, isRequired: false },
-          { name: 'skip', isRequired: false }
-        ]
-      },
-      {
-        id: 'anime-airing',
-        type: 'anime',
-        name: 'Currently Airing',
-        extra: [
-          { name: 'genre', options: weekdayOptions, isRequired: false },
-          { name: 'skip', isRequired: false }
-        ]
-      },
-      {
-        id: 'anime-movies',
-        type: 'anime',
-        name: 'Movies',
-        extra: [
-          { name: 'genre', options: movieOptions, isRequired: false },
-          { name: 'skip', isRequired: false }
-        ]
-      },
-      {
-        id: 'anime-series-search',
-        type: 'series',
-        name: 'Anime Series',
-        extra: [
-          { name: 'search', isRequired: true },
-          { name: 'skip' }
-        ]
-      },
-      {
-        id: 'anime-movies-search',
-        type: 'movie',
-        name: 'Anime Movies',
-        extra: [
-          { name: 'search', isRequired: true },
-          { name: 'skip' }
-        ]
-      }
-    ],
+    catalogs,
     behaviorHints: {
       configurable: true,
       configurationRequired: false
@@ -1689,7 +1776,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null) {
 // ===== CONFIG PARSING =====
 
 function parseConfig(configStr) {
-  const config = { excludeLongRunning: false, showCounts: true };
+  const config = { excludeLongRunning: false, showCounts: true, hiddenCatalogs: [] };
   
   if (!configStr) return config;
   
@@ -1701,6 +1788,15 @@ function parseConfig(configStr) {
     }
     if (key === 'showCounts') {
       config.showCounts = value !== '0' && value !== 'false';
+    }
+    if (key === 'hc' && value) {
+      // Hidden catalogs: comma-separated list (e.g., hc=top,movies)
+      // Valid values: top, season, airing, movies
+      const validCatalogs = ['top', 'season', 'airing', 'movies'];
+      config.hiddenCatalogs = value.split(',')
+        .map(c => c.trim().toLowerCase())
+        .filter(c => validCatalogs.includes(c))
+        .slice(0, 3); // Max 3 hidden (at least 1 must remain)
     }
   }
   
@@ -2435,7 +2531,7 @@ export default {
     if (manifestMatch) {
       const config = parseConfig(manifestMatch[1]);
       // Manifest cached for 24 hours - rarely changes
-      return jsonResponse(getManifest(filterOptions, config.showCounts, catalog), { 
+      return jsonResponse(getManifest(filterOptions, config.showCounts, catalog, config.hiddenCatalogs), { 
         maxAge: MANIFEST_CACHE_TTL, 
         staleWhileRevalidate: 3600 
       });
@@ -2612,18 +2708,28 @@ export default {
     const metaMatch = path.match(/^(?:\/([^\/]+))?\/meta\/([^\/]+)\/(.+)\.json$/);
     if (metaMatch) {
       const [, configStr, type, id] = metaMatch;
-      const result = await handleMeta(catalog, type, id);
-      // Meta cached for 1 hour - episode lists don't change often
-      return jsonResponse(result, { maxAge: META_HTTP_CACHE, staleWhileRevalidate: 600 });
+      try {
+        const result = await handleMeta(catalog, type, id);
+        // Meta cached for 1 hour - episode lists don't change often
+        return jsonResponse(result, { maxAge: META_HTTP_CACHE, staleWhileRevalidate: 600 });
+      } catch (error) {
+        console.error('Meta handler error:', error.message);
+        return jsonResponse({ meta: null }, { maxAge: 60 });
+      }
     }
     
     // Stream route: /stream/:type/:id.json or /{config}/stream/:type/:id.json
     const streamMatch = path.match(/^(?:\/([^\/]+))?\/stream\/([^\/]+)\/(.+)\.json$/);
     if (streamMatch) {
       const [, configStr, type, id] = streamMatch;
-      const result = await handleStream(catalog, type, id);
-      // Streams cached for 2 minutes - sources can change
-      return jsonResponse(result, { maxAge: STREAM_HTTP_CACHE, staleWhileRevalidate: 60 });
+      try {
+        const result = await handleStream(catalog, type, id);
+        // Streams cached for 2 minutes - sources can change
+        return jsonResponse(result, { maxAge: STREAM_HTTP_CACHE, staleWhileRevalidate: 60 });
+      } catch (error) {
+        console.error('Stream handler error:', error.message);
+        return jsonResponse({ streams: [] }, { maxAge: 60 });
+      }
     }
     
     // 404 for unknown routes
