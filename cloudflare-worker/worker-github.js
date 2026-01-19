@@ -8,7 +8,7 @@
 // ===== CONFIGURATION =====
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/data';
 const CACHE_TTL = 21600; // 6 hours cache for GitHub data (catalog is static, rarely updates)
-const CACHE_BUSTER = 'v9'; // Change this to bust cache after catalog updates
+const CACHE_BUSTER = 'v11'; // Change this to bust cache after catalog updates
 const ALLANIME_CACHE_TTL = 300; // 5 minutes for AllAnime API responses (streams change frequently)
 const MANIFEST_CACHE_TTL = 86400; // 24 hours for manifest (rarely changes)
 const CATALOG_HTTP_CACHE = 21600; // 6 hours HTTP cache for catalog responses (static content)
@@ -3005,17 +3005,9 @@ function generateSeasonOptions(filterOptions, currentSeason, showCounts, catalog
 // ===== MANIFEST =====
 
 function getManifest(filterOptions, showCounts = true, catalogData = null, hiddenCatalogs = []) {
-  console.log('[getManifest] filterOptions keys:', Object.keys(filterOptions || {}));
-  console.log('[getManifest] showCounts:', showCounts);
-  console.log('[getManifest] filterOptions.genres:', filterOptions?.genres ? 'present' : 'missing');
-  console.log('[getManifest] filterOptions.weekdays:', filterOptions?.weekdays ? 'present' : 'missing');
-  console.log('[getManifest] filterOptions.movieGenres:', filterOptions?.movieGenres ? 'present' : 'missing');
-  
   const genreOptions = showCounts && filterOptions.genres?.withCounts 
     ? filterOptions.genres.withCounts.filter(g => !g.toLowerCase().startsWith('animation'))
     : (filterOptions.genres?.list || []).filter(g => g.toLowerCase() !== 'animation');
-  
-  console.log('[getManifest] genreOptions length:', genreOptions.length);
   
   // Generate dynamic season options based on current date
   // Shows: Current season + past seasons, with "Upcoming" for all future seasons
