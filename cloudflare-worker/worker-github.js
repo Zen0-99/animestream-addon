@@ -8,7 +8,7 @@
 // ===== CONFIGURATION =====
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/data';
 const CACHE_TTL = 21600; // 6 hours cache for GitHub data (catalog is static, rarely updates)
-const CACHE_BUSTER = 'v11'; // Change this to bust cache after catalog updates
+const CACHE_BUSTER = 'v12'; // Change this to bust cache after catalog updates
 const ALLANIME_CACHE_TTL = 300; // 5 minutes for AllAnime API responses (streams change frequently)
 const MANIFEST_CACHE_TTL = 86400; // 24 hours for manifest (rarely changes)
 const CATALOG_HTTP_CACHE = 21600; // 6 hours HTTP cache for catalog responses (static content)
@@ -150,8 +150,8 @@ function checkRateLimit(ip) {
 
 // Helper to create JSON response with cache headers
 function jsonResponse(data, options = {}) {
-  const { maxAge = 0, staleWhileRevalidate = 0, status = 200 } = options;
-  const headers = { ...JSON_HEADERS };
+  const { maxAge = 0, staleWhileRevalidate = 0, status = 200, extraHeaders = {} } = options;
+  const headers = { ...JSON_HEADERS, ...extraHeaders };
   
   if (maxAge > 0) {
     // Cache-Control: public allows CDN caching, s-maxage for edge cache, stale-while-revalidate for background refresh
@@ -2821,6 +2821,17 @@ function handleSeasonReleases(catalogData, seasonFilter) {
  * @returns {Array} Filtered and sorted anime list
  */
 function handleAiring(catalogData, genreFilter, config) {
+  // Debug: Check if MAL-only anime exist in catalog
+  const malOnlyIds = ['mal-59978', 'mal-53876', 'mal-62804'];
+  malOnlyIds.forEach(id => {
+    const anime = catalogData.find(a => a.id === id);
+    if (anime) {
+      console.log(`[handleAiring DEBUG] ${id} exists in catalog: ${anime.name}, status=${anime.status}, broadcastDay=${anime.broadcastDay}`);
+    } else {
+      console.log(`[handleAiring DEBUG] ${id} NOT FOUND in catalog`);
+    }
+  });
+  
   // Get parent series that have ongoing seasons (e.g., JJK main entry when S3 is airing)
   const parentsWithOngoingSeasons = getParentsWithOngoingSeasons(catalogData);
   
@@ -2836,17 +2847,33 @@ function handleAiring(catalogData, genreFilter, config) {
     }
   }
   
+  // Debug: Count before filtering
+  const ongoingCount = catalogData.filter(a => a.status === 'ONGOING').length;
+  const ongoingFriday = catalogData.filter(a => a.status === 'ONGOING' && a.broadcastDay === 'Friday');
+  console.log(`[handleAiring] Total ONGOING: ${ongoingCount}, ONGOING Friday: ${ongoingFriday.length}`);
+  ongoingFriday.forEach(a => {
+    const seriesType = isSeriesType(a);
+    const excluded = shouldExcludeFromCatalog(a);
+    console.log(`[handleAiring] ${a.name} (${a.id}): isSeriesType=${seriesType}, shouldExclude=${excluded}`);
+  });
+  
   // Include anime that are either:
   // 1. Directly marked as ONGOING in our catalog
   // 2. Parent series that have an ongoing season (even if parent is marked FINISHED)
   let filtered = catalogData.filter(anime => {
     if (!isSeriesType(anime) || shouldExcludeFromCatalog(anime)) {
+      // Debug: Log rejection reasons for MAL anime
+      if (anime.id && anime.id.startsWith('mal-')) {
+        console.log(`[handleAiring REJECTED] ${anime.id}: isSeriesType=${isSeriesType(anime)}, shouldExclude=${shouldExcludeFromCatalog(anime)}`);
+      }
       return false;
     }
     // Include if directly ONGOING or parent with ongoing season
-    return anime.status === 'ONGOING' || 
-           parentsWithOngoingSeasons.has(anime.id);
+    const isOngoing = anime.status === 'ONGOING' || parentsWithOngoingSeasons.has(anime.id);
+    return isOngoing;
   });
+  
+  console.log(`[handleAiring] After initial filter: ${filtered.length} anime`);
   
   // For anime, enhance broadcast day information for parent series
   filtered = filtered.map(anime => {
@@ -2879,15 +2906,19 @@ function handleAiring(catalogData, genreFilter, config) {
       // For recent anime without episode data, include them
       return true;
     });
+    console.log(`[handleAiring] After excludeLongRunning filter: ${filtered.length} anime`);
   }
   
   // Filter by weekday if specified
   if (genreFilter) {
     const weekday = parseWeekdayFilter(genreFilter);
     if (weekday) {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(anime => 
         anime.broadcastDay && anime.broadcastDay.toLowerCase() === weekday
       );
+      console.log(`[handleAiring] After weekday filter (${weekday}): ${filtered.length} anime (from ${beforeCount})`);
+      filtered.forEach(a => console.log(`[handleAiring] Final: ${a.name} (${a.id})`));
     }
   }
   
@@ -4087,8 +4118,15 @@ export default {
       const paginated = catalogResult.slice(skip, skip + PAGE_SIZE);
       const metas = paginated.map(formatAnimeMeta);
       
+      // Add debug header for airing catalog
+      const headers = {};
+      if (id === 'anime-airing') {
+        headers['X-Debug-Total-Result'] = catalogResult.length.toString();
+        headers['X-Debug-Paginated'] = paginated.length.toString();
+      }
+      
       // Catalog results cached for 10 minutes - good balance for airing shows
-      return jsonResponse({ metas }, { maxAge: CATALOG_HTTP_CACHE, staleWhileRevalidate: 300 });
+      return jsonResponse({ metas }, { maxAge: CATALOG_HTTP_CACHE, staleWhileRevalidate: 300, extraHeaders: headers });
     }
     
     // Debug route for stream tracing

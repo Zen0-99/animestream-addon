@@ -6,7 +6,8 @@ compatibility_date = "2024-01-01"
 [vars]
 ENVIRONMENT = "production"
 
-# KV namespace for caching (optional - create in Cloudflare dashboard)
-# [[kv_namespaces]]
-# binding = "CACHE"
-# id = "your-kv-namespace-id"
+# KV namespace for storing user scrobbling tokens
+[[kv_namespaces]]
+binding = "USER_TOKENS"
+id = "928dc36173b84dd8bee471aecaf69a8d"
+    

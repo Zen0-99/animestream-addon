@@ -219,12 +219,12 @@
   
   <script>
     // Fetch stats
-    fetch('/admin/stats')
+    fetch('/api/stats')
       .then(r => r.json())
       .then(data => {
-        document.getElementById('totalAnime').textContent = (data.database?.totalAnime || 0).toLocaleString();
-        document.getElementById('totalGenres').textContent = data.filters?.genres || '-';
-        document.getElementById('totalSeasons').textContent = data.filters?.seasons || '-';
+        document.getElementById('totalAnime').textContent = (data.totalAnime || 0).toLocaleString();
+        document.getElementById('totalGenres').textContent = data.genreCount || '-';
+        document.getElementById('totalSeasons').textContent = data.seasonCount || '-';
       })
       .catch(() => {
         document.getElementById('totalAnime').textContent = '40,000+';

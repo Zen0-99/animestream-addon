@@ -75,12 +75,22 @@ app.get('/:config/configure', (req, res) => {
 // === API: Stats ===
 app.get('/api/stats', (req, res) => {
   const filterOptions = databaseLoader.loadFilterOptions();
+  const dbStats = databaseLoader.getStats();
+  const catalog = databaseLoader.getCatalog();
+  
+  // Compute stats from actual data
+  const totalAnime = dbStats.totalAnime || catalog.length || 0;
+  const totalSeries = catalog.filter(a => a.type === 'series').length || 0;
+  const totalMovies = catalog.filter(a => a.type === 'movie').length || 0;
+  const genreCount = filterOptions?.genres?.withCounts?.length || filterOptions?.genres?.noCounts?.length || 0;
+  const seasonCount = filterOptions?.seasons?.withCounts?.length || filterOptions?.seasons?.noCounts?.length || 0;
+  
   res.json({
-    totalAnime: filterOptions?.stats?.totalAnime || 0,
-    totalSeries: filterOptions?.stats?.totalSeries || 0,
-    totalMovies: filterOptions?.stats?.totalMovies || 0,
-    genreCount: filterOptions?.stats?.genreCount || 0,
-    seasonCount: filterOptions?.stats?.seasonCount || 0
+    totalAnime,
+    totalSeries,
+    totalMovies,
+    genreCount,
+    seasonCount
   });
 });
 
