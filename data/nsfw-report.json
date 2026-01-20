@@ -1,0 +1,1193 @@
+{
+  "generatedAt": "2026-01-20T11:32:59.390Z",
+  "totalScanned": 8406,
+  "nsfwCount": 71,
+  "cleanCount": 8335,
+  "byMethod": {
+    "nsfw_genre": 71,
+    "slug_match": 38,
+    "hentai_studio": 25,
+    "exact_title_match": 37,
+    "fuzzy_match": 8
+  },
+  "nsfwEntries": [
+    {
+      "id": "tt5235870",
+      "name": "Valkyrie Drive: Mermaid",
+      "genres": [
+        "Action",
+        "Ecchi",
+        "Fantasy",
+        "Shoujo Ai",
+        "Animation",
+        "Adult"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Adult"
+      ]
+    },
+    {
+      "id": "mal-48755",
+      "name": "Imaizumin Chi wa Douyara Gal no Tamariba ni Natteru Rashii",
+      "genres": [
+        "Hentai",
+        "Harem"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-49944",
+      "name": "Shishunki no Obenkyou",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Studio 1st"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-59407",
+      "name": "Iribitari Gal ni Ma〇ko Tsukawasete Morau Hanashi",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Seven"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "fuzzy_match:98%",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61232",
+      "name": "Fuuki Iin to Fuuzoku Katsudou",
+      "genres": [
+        "Hentai",
+        "Harem",
+        "School"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-62328",
+      "name": "Sister Breeder",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-60494",
+      "name": "Immoral Routine The Animation",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Seven"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61790",
+      "name": "Love Me: Kakurenbo The Animation",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Studio 1st"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-53204",
+      "name": "Isekai Kita no de Sukebe Skill de Zenryoku Ouka Shiyou to Omou The Animation",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Shion"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "fuzzy_match:92%",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-62315",
+      "name": "Reika wa Karei na Boku no Joou The Animation",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Seven"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-59185",
+      "name": "Sex ga Suki de Suki de Daisuki na Classmate no Ano Musume",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "New Generation"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-60553",
+      "name": "Nonohara Yuzuka no Himitsu no Haishin",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-57044",
+      "name": "Fleur The Animation",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Studio 1st"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61599",
+      "name": "Boku no Risou no Isekai Seikatsu",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Studio 1st"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-60784",
+      "name": "Yuugao",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-62689",
+      "name": "Oshikake! Bakunyuu Gal Harem Seikatsu",
+      "genres": [
+        "Hentai",
+        "Harem"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-62406",
+      "name": "Natsu to Hako",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "New Generation"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-55003",
+      "name": "1LDK + JK Ikinari Doukyo? Micchaku!? Hatsu Ecchi!!?",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Studio 1st"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-62316",
+      "name": "Choro Mesu Days",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-62380",
+      "name": "Natsuzuma",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-61764",
+      "name": "Wiheomhan Pyeonuijeom",
+      "genres": [
+        "Boys Love",
+        "Erotica"
+      ],
+      "studios": [],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Erotica"
+      ]
+    },
+    {
+      "id": "mal-32587",
+      "name": "Shoujo Ramune",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "New Generation"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-58891",
+      "name": "Gobaku: Moe Mama Tsurezure",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-59840",
+      "name": "Yumemiru Otome",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-61694",
+      "name": "Android wa Keiken Ninzuu ni Hairimasu ka??",
+      "genres": [
+        "Girls Love",
+        "Sci-Fi",
+        "Erotica"
+      ],
+      "studios": [
+        "Nyan Pollution"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Erotica"
+      ]
+    },
+    {
+      "id": "mal-61628",
+      "name": "Yogoreta Kanojo",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-61935",
+      "name": "Pure Pure Pero Pero Princess",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Ryuu M's"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-60351",
+      "name": "Ikuiku Succubus Saikyouiku",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Ryuu M's"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-50622",
+      "name": "Kemonokko Tsuushin: The Animation",
+      "genres": [
+        "Hentai",
+        "Anthropomorphic"
+      ],
+      "studios": [],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61164",
+      "name": "Inshoku Ou Demar",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Seven"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-62921",
+      "name": "Kegareboshi",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-62921",
+      "name": "Kegareboshi",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "T-Rex"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:T-Rex"
+      ]
+    },
+    {
+      "id": "mal-60980",
+      "name": "Kuro Gal à la Carte",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Blue bread"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-60720",
+      "name": "Ajin ga Osuki nan desu ne",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Blue bread"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61538",
+      "name": "Asa made Shiru Daku Haha Musume Donburi!!",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Blue bread"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-51088",
+      "name": "Eroriman",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "PoRO"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:PoRO"
+      ]
+    },
+    {
+      "id": "mal-62578",
+      "name": "Cool de M",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-61788",
+      "name": "Netorareta Bakunyuu Tsuma-tachi",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Blue bread"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-38817",
+      "name": "Takarasagashi no Natsuyasumi",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "fuzzy_match:90%",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61936",
+      "name": "Kore tte Naani?",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-60470",
+      "name": "Nikuen",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Blue bread"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61353",
+      "name": "Hametsu no Yuuwaku",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-61583",
+      "name": "Immoral Game Master The Animation",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Seven"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-58890",
+      "name": "Yarakashi",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-62339",
+      "name": "Honey Blonde 2",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Blue bread"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-62369",
+      "name": "Do S na Pet",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-42141",
+      "name": "Kanojo ga Yatsu ni Idakareta Hi",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "fuzzy_match:97%",
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-62353",
+      "name": "Nagachichi Nagai-san The Animation",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Seven"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61165",
+      "name": "Amai Ijiwaru",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-61789",
+      "name": "Shachiku Cinderella",
+      "genres": [
+        "Hentai",
+        "Workplace"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-62314",
+      "name": "Seikon no Aria",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Majin"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-59697",
+      "name": "Bishoku-ke no Rule",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-60495",
+      "name": "Kanochi x Netorare Kazoku The Animation",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Anime Antenna Iinkai"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-62106",
+      "name": "Kanojo ga Separate wo Matou Riyuu",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Studio LEO"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "fuzzy_match:97%",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61911",
+      "name": "Kyou wa Yubiwa wo Hazusu kara......",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Nur"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "fuzzy_match:97%",
+        "nsfw_genre:Hentai",
+        "hentai_studio:Nur"
+      ]
+    },
+    {
+      "id": "mal-63096",
+      "name": "Arisugawa Ren tte Honto wa Onna Nanda yo ne.",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Studio LEO"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-62897",
+      "name": "Ichigo Aika: Zatsu de Namaiki na Imouto to Warikirenai Ani",
+      "genres": [
+        "Comedy",
+        "Hentai",
+        "School"
+      ],
+      "studios": [
+        "Studio Hokiboshi"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61166",
+      "name": "Akogare no Onna Joushi ga, Aibeya Shucchou no Tonari no Bed de Zetsurin Otoko ni Netorarete Iru",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "New Generation"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-60642",
+      "name": "Yuusha-chan no Bouken wa Owatteshimatta!",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Mousou Senka"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-58122",
+      "name": "Succubus ★ Connect!",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Majin"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-62537",
+      "name": "Mesu wo Karu Mura",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Blue bread"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "fuzzy_match:94%",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-59173",
+      "name": "Futsuma *jo Charlotte",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Majin"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-60857",
+      "name": "Notto Sexaroid Eurie!",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Majin"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61539",
+      "name": "Princess Burst!",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Majin"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-59404",
+      "name": "Mecha Gishi Resta no Daibouken",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Majin"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-58123",
+      "name": "Dearest Blue",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "PoRO"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai",
+        "hentai_studio:PoRO"
+      ]
+    },
+    {
+      "id": "mal-60044",
+      "name": "Shinsei Kourin Dacryon Luna",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Anime Antenna Iinkai"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "fuzzy_match:96%",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-56154",
+      "name": "Mahou Touki Lilustear",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Majin"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-61937",
+      "name": "Kiken na Mori Onigokko",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Majin"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "exact_title_match",
+        "slug_match",
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-48392",
+      "name": "Meijyou",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Poly Animation"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai"
+      ]
+    },
+    {
+      "id": "mal-60147",
+      "name": "Ikusei",
+      "genres": [
+        "Hentai"
+      ],
+      "studios": [
+        "Suzuki Mirano"
+      ],
+      "isNSFW": true,
+      "confidence": 100,
+      "reasons": [
+        "nsfw_genre:Hentai",
+        "hentai_studio:Suzuki Mirano"
+      ]
+    }
+  ]
+}

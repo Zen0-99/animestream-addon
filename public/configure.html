@@ -246,7 +246,8 @@
         parts.push('excludeLongRunning=1');
       }
       
-      return parts.join('&');
+      // Use _ as separator instead of & to avoid Cloudflare URL blocking
+      return parts.join('_');
     }
     
     function rerender() {

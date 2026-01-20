@@ -8,7 +8,7 @@
 // ===== CONFIGURATION =====
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/data';
 const CACHE_TTL = 21600; // 6 hours cache for GitHub data (catalog is static, rarely updates)
-const CACHE_BUSTER = 'v12'; // Change this to bust cache after catalog updates
+const CACHE_BUSTER = 'v14'; // Change this to bust cache after catalog updates
 const ALLANIME_CACHE_TTL = 300; // 5 minutes for AllAnime API responses (streams change frequently)
 const MANIFEST_CACHE_TTL = 86400; // 24 hours for manifest (rarely changes)
 const CATALOG_HTTP_CACHE = 21600; // 6 hours HTTP cache for catalog responses (static content)
@@ -2098,6 +2098,39 @@ function parseSeasonFilter(seasonValue) {
   return null;
 }
 
+// ===== NSFW CONTENT FILTERING =====
+// Block hentai and adult content from appearing in catalogs
+// These IDs were detected using HentaiStream database matching
+const NSFW_BLOCKLIST = new Set([
+  'tt5235870','mal-48755','mal-49944','mal-59407','mal-61232','mal-62328','mal-60494','mal-61790',
+  'mal-53204','mal-62315','mal-59185','mal-60553','mal-57044','mal-61599','mal-60784','mal-62689',
+  'mal-62406','mal-55003','mal-62316','mal-62380','mal-61764','mal-32587','mal-58891','mal-59840',
+  'mal-61694','mal-61628','mal-61935','mal-60351','mal-50622','mal-61164','mal-62921','mal-60980',
+  'mal-60720','mal-61538','mal-51088','mal-62578','mal-61788','mal-38817','mal-61936','mal-60470',
+  'mal-61353','mal-61583','mal-58890','mal-62339','mal-62369','mal-42141','mal-62353','mal-61165',
+  'mal-61789','mal-62314','mal-59697','mal-60495','mal-62106','mal-61911','mal-63096','mal-62897',
+  'mal-61166','mal-60642','mal-58122','mal-62537','mal-59173','mal-60857','mal-61539','mal-59404',
+  'mal-58123','mal-60044','mal-56154','mal-61937','mal-48392','mal-60147'
+]);
+
+// NSFW genres that should trigger filtering
+const NSFW_GENRES = new Set(['hentai', 'erotica', 'adult', '18+', 'r-18', 'r18', 'xxx', 'smut']);
+
+// Check if anime should be filtered as NSFW
+function isNSFWContent(anime) {
+  // Check blocklist
+  if (NSFW_BLOCKLIST.has(anime.id)) return true;
+  
+  // Check genres
+  if (anime.genres) {
+    for (const genre of anime.genres) {
+      if (NSFW_GENRES.has(genre.toLowerCase())) return true;
+    }
+  }
+  
+  return false;
+}
+
 function isSeriesType(anime) {
   if (anime.subtype === 'movie') return false;
   let runtime = anime.runtime;
@@ -2119,6 +2152,7 @@ const HIDDEN_DUPLICATE_ENTRIES = new Set([
   'tt36956670',   // JJK: Hidden Inventory/Premature Death (S2 - covered by tt12343534)
   'tt14331144',   // JJK 0 movie (covered by tt12343534 as a prequel movie)
   'mal-57658',    // JJK: The Culling Game Part 1 (S3 - covered by tt12343534)
+  'mal-59978',    // Frieren 2nd Season (covered by tt22248376)
   // Add more as needed
 ]);
 
@@ -2128,12 +2162,14 @@ const SEASON_TO_PARENT_MAP = {
   'mal-57658': 'tt12343534',    // JJK: The Culling Game Part 1 → Jujutsu Kaisen
   'tt36956670': 'tt12343534',   // JJK: Hidden Inventory → Jujutsu Kaisen
   'tt14331144': 'tt12343534',   // JJK 0 → Jujutsu Kaisen
+  'mal-59978': 'tt22248376',    // Frieren 2nd Season → Frieren: Beyond Journey's End
   // Add more mappings as needed
 };
 
 // Reverse map: parent ID → list of season IDs (for stream checking)
 const PARENT_TO_SEASONS_MAP = {
   'tt12343534': ['mal-57658', 'tt36956670', 'tt14331144'],  // JJK seasons
+  'tt22248376': ['mal-59978'],  // Frieren seasons
   // Add more mappings as needed
 };
 
@@ -2141,6 +2177,7 @@ const PARENT_TO_SEASONS_MAP = {
 // Only this season will be streamable, older seasons redirect to Torrentio
 const PARENT_ONGOING_SEASON = {
   'tt12343534': 3,  // JJK Season 3 (The Culling Game) is currently airing
+  'tt22248376': 2,  // Frieren Season 2 is currently airing
   // Add more as needed
 };
 
@@ -2631,6 +2668,7 @@ function shouldExcludeFromCatalog(anime) {
   if (isMusicVideo(anime)) return true;
   if (isDeletedEntry(anime)) return true;
   if (isOVA(anime)) return true;  // Filter out OVAs
+  if (isNSFWContent(anime)) return true;  // Filter out hentai/adult content
   return false;
 }
 
@@ -3035,7 +3073,7 @@ function generateSeasonOptions(filterOptions, currentSeason, showCounts, catalog
 
 // ===== MANIFEST =====
 
-function getManifest(filterOptions, showCounts = true, catalogData = null, hiddenCatalogs = []) {
+function getManifest(filterOptions, showCounts = true, catalogData = null, hiddenCatalogs = [], config = {}) {
   const genreOptions = showCounts && filterOptions.genres?.withCounts 
     ? filterOptions.genres.withCounts.filter(g => !g.toLowerCase().startsWith('animation'))
     : (filterOptions.genres?.list || []).filter(g => g.toLowerCase() !== 'animation');
@@ -3045,9 +3083,39 @@ function getManifest(filterOptions, showCounts = true, catalogData = null, hidde
   const currentSeason = getCurrentSeason();
   const seasonOptions = generateSeasonOptions(filterOptions, currentSeason, showCounts, catalogData);
   
-  const weekdayOptions = showCounts && filterOptions.weekdays?.withCounts 
-    ? filterOptions.weekdays.withCounts 
-    : (filterOptions.weekdays?.list || []);
+  // Recalculate weekday counts if excludeLongRunning is enabled
+  let weekdayOptions;
+  if (showCounts && config.excludeLongRunning && catalogData) {
+    // Recalculate counts excluding long-running anime
+    const weekdayCounts = {};
+    const currentYear = new Date().getFullYear();
+    
+    for (const anime of catalogData) {
+      if (!anime.broadcastDay || anime.status !== 'ONGOING') continue;
+      if (!isSeriesType(anime) || shouldExcludeFromCatalog(anime)) continue;
+      
+      // Apply the same long-running filter logic as in handleAiring
+      const year = anime.year || currentYear;
+      const episodeCount = anime.episodes || null;
+      
+      // Skip long-running anime
+      if (year < currentYear - 10 && episodeCount === null) continue;
+      if (episodeCount !== null && episodeCount >= 100) continue;
+      
+      const day = anime.broadcastDay;
+      weekdayCounts[day] = (weekdayCounts[day] || 0) + 1;
+    }
+    
+    // Format as "Day (count)"
+    const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    weekdayOptions = weekdays
+      .filter(day => weekdayCounts[day] > 0)
+      .map(day => `${day} (${weekdayCounts[day]})`);
+  } else {
+    weekdayOptions = showCounts && filterOptions.weekdays?.withCounts 
+      ? filterOptions.weekdays.withCounts 
+      : (filterOptions.weekdays?.list || []);
+  }
   
   const movieOptions = showCounts && filterOptions.movieGenres?.withCounts 
     ? ['Upcoming', 'New Releases', ...filterOptions.movieGenres.withCounts.filter(g => !g.toLowerCase().startsWith('animation'))]
@@ -3130,7 +3198,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null, hidde
 
   return {
     id: 'community.animestream',
-    version: '1.2.0',
+    version: '1.2.1',
     name: 'AnimeStream',
     description: 'All your favorite Anime series and movies with filtering by genre, seasonal releases, currently airing and ratings. Stream both SUB and DUB options via AllAnime.',
     // CRITICAL: Use explicit resource objects with types and idPrefixes
@@ -3180,7 +3248,9 @@ function parseConfig(configStr) {
   
   if (!configStr) return config;
   
-  const params = configStr.split('&');
+  // Support multiple separators: _ (preferred), | and & for backwards compatibility
+  const decodedConfigStr = decodeURIComponent(configStr);
+  const params = decodedConfigStr.split(/[_|&]/);
   for (const param of params) {
     const [key, value] = param.split('=');
     if (key === 'excludeLongRunning') {
@@ -4046,7 +4116,7 @@ export default {
     if (manifestMatch) {
       const config = parseConfig(manifestMatch[1]);
       // Manifest cached for 24 hours - rarely changes
-      return jsonResponse(getManifest(filterOptions, config.showCounts, catalog, config.hiddenCatalogs), { 
+      return jsonResponse(getManifest(filterOptions, config.showCounts, catalog, config.hiddenCatalogs, config), { 
         maxAge: MANIFEST_CACHE_TTL, 
         staleWhileRevalidate: 3600 
       });
@@ -4709,6 +4779,33 @@ export default {
         return jsonResponse({ success: true });
       } catch (error) {
         return jsonResponse({ error: 'Failed to disconnect', message: error.message }, { status: 500 });
+      }
+    }
+    
+    // Debug catalog endpoint
+    if (path === '/debug/catalog-info') {
+      try {
+        const { catalog } = await fetchCatalogData();
+        const fridayAnime = catalog.filter(a => a.broadcastDay === 'Friday' && a.status === 'ONGOING');
+        const malOnly = fridayAnime.filter(a => a.id && a.id.startsWith('mal-') && !a.imdb_id);
+        
+        return jsonResponse({
+          totalCatalogSize: catalog.length,
+          fridayOngoingCount: fridayAnime.length,
+          cacheInfo: {
+            timestamp: cacheTimestamp,
+            age: Date.now() - cacheTimestamp,
+            cacheBuster: CACHE_BUSTER
+          },
+          targetAnime: {
+            'mal-59978': catalog.find(a => a.id === 'mal-59978'),
+            'mal-53876': catalog.find(a => a.id === 'mal-53876'),
+            'mal-62804': catalog.find(a => a.id === 'mal-62804')
+          },
+          malOnlyFridayAnime: malOnly.map(a => ({ id: a.id, name: a.name }))
+        });
+      } catch (error) {
+        return jsonResponse({ error: error.message }, { status: 500 });
       }
     }
     
