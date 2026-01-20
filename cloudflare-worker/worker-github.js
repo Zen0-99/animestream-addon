@@ -8,7 +8,7 @@
 // ===== CONFIGURATION =====
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/data';
 const CACHE_TTL = 21600; // 6 hours cache for GitHub data (catalog is static, rarely updates)
-const CACHE_BUSTER = 'v14'; // Change this to bust cache after catalog updates
+const CACHE_BUSTER = 'v15'; // Change this to bust cache after catalog updates
 const ALLANIME_CACHE_TTL = 300; // 5 minutes for AllAnime API responses (streams change frequently)
 const MANIFEST_CACHE_TTL = 86400; // 24 hours for manifest (rarely changes)
 const CATALOG_HTTP_CACHE = 21600; // 6 hours HTTP cache for catalog responses (static content)
@@ -3248,15 +3248,25 @@ function parseConfig(configStr) {
   
   if (!configStr) return config;
   
-  // Support multiple separators: _ (preferred), | and & for backwards compatibility
-  const decodedConfigStr = decodeURIComponent(configStr);
-  const params = decodedConfigStr.split(/[_|&]/);
+  // Support concatenated flags (nocountsnolongrunning) and separated formats for backwards compat
+  const decodedConfigStr = decodeURIComponent(configStr).toLowerCase();
+  
+  // Check for flag presence in the string
+  if (decodedConfigStr.includes('nolongrunning') || decodedConfigStr.includes('excludelongrunning')) {
+    config.excludeLongRunning = true;
+  }
+  
+  // Support both 'nocounts' and 'hidecounts' (Cloudflare blocks 'nocounts' in URL paths)
+  if (decodedConfigStr.includes('nocounts') || decodedConfigStr.includes('hidecounts')) {
+    config.showCounts = false;
+  }
+  
+  // Also support old format with separators
+  const params = decodedConfigStr.split(/[._|&]/);
   for (const param of params) {
-    const [key, value] = param.split('=');
-    if (key === 'excludeLongRunning') {
-      config.excludeLongRunning = value === '1' || value === 'true';
-    }
-    if (key === 'showCounts') {
+    const [key, value] = param.split(/[=-]/);
+    
+    if (key === 'showcounts') {
       config.showCounts = value !== '0' && value !== 'false';
     }
     if (key === 'hc' && value) {

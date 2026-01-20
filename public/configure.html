@@ -238,16 +238,17 @@
     function buildConfigPath() {
       const parts = [];
       
+      // Use lowercase flag names concatenated - presence means true, absence means default
+      // IMPORTANT: Cloudflare blocks 'nocounts' in URL paths, use 'hidecounts' instead
       if (!state.showCounts) {
-        parts.push('showCounts=0');
+        parts.push('hidecounts');
       }
       
       if (state.excludeLongRunning) {
-        parts.push('excludeLongRunning=1');
+        parts.push('nolongrunning');
       }
       
-      // Use _ as separator instead of & to avoid Cloudflare URL blocking
-      return parts.join('_');
+      return parts.join('');
     }
     
     function rerender() {
