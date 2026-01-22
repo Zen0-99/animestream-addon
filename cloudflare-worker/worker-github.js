@@ -7657,21 +7657,26 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
               }
             });
           } else {
-            // No debrid configured - show as magnet/configure prompt
+            // No debrid configured - serve as magnet link for user's torrent client
             const titleLine = `${animeName} - ${qualityLabel}${codecTag}${rawTag}`.trim().replace(/- $/, '').trim();
-            const fullTitle = metaLine ? `${titleLine}\n${metaLine}\n⚠️ Requires Debrid` : `${titleLine}\n⚠️ Requires Debrid`;
+            const fullTitle = metaLine ? `${titleLine}\n${metaLine}` : titleLine;
             
             formattedStreams.push({
               name: `🧲 AnimeStream`,
               title: fullTitle,
-              // Link to configure page to set up debrid
-              externalUrl: `${workerBaseUrl}/configure`,
-              behaviorHints: {
-                notWebReady: true,
-                bingeGroup: `torrent-${showId}-${season}`
-              },
               infoHash: torrent.infoHash,
-              sources: [`tracker:udp://tracker.opentrackr.org:1337/announce`]
+              sources: [
+                'tracker:udp://tracker.opentrackr.org:1337/announce',
+                'tracker:udp://open.stealth.si:80/announce',
+                'tracker:udp://tracker.torrent.eu.org:451/announce',
+                'tracker:udp://tracker.bittor.pw:1337/announce',
+                'tracker:udp://public.popcorn-tracker.org:6969/announce',
+                'tracker:udp://tracker.dler.org:6969/announce',
+                'tracker:udp://exodus.desync.com:6969/announce'
+              ],
+              behaviorHints: {
+                bingeGroup: `torrent-${showId}-${season}`
+              }
             });
           }
         }
