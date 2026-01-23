@@ -6049,8 +6049,8 @@ function parseRSSItems(xml) {
  * @param {number} episode - Optional specific episode number
  * @returns {Promise<Array>} Array of torrent objects
  */
-async function scrapeNyaa(animeName, episode = null, season = 1) {
-  const cacheKey = `nyaa:S${season}:${animeName}:${episode || 'all'}`;
+async function scrapeNyaa(animeName, episode = null, season = 1, isMovie = false) {
+  const cacheKey = isMovie ? `nyaa:movie:${animeName}` : `nyaa:S${season}:${animeName}:${episode || 'all'}`;
   
   // Check cache
   const cached = torrentCache.get(cacheKey);
@@ -6186,8 +6186,14 @@ async function scrapeNyaa(animeName, episode = null, season = 1) {
     });
     
     // EPISODE VALIDATION: Filter to only torrents matching requested episode
+    // For movies, pass contentTypeHint='movie' to accept movie torrents
     let validatedTorrents = torrents;
-    if (episode) {
+    if (isMovie) {
+      // For movies, filter using movie content type hint
+      const beforeCount = torrents.length;
+      validatedTorrents = filterTorrentsByEpisode(torrents, 1, 1, animeName, [], 60, 'movie');
+      console.log(`[Nyaa] Movie validation: ${validatedTorrents.length}/${beforeCount} torrents match movie pattern`);
+    } else if (episode) {
       const beforeCount = torrents.length;
       validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, animeName);
       console.log(`[Nyaa] Episode validation: ${validatedTorrents.length}/${beforeCount} torrents match E${episode} S${season}`);
@@ -6209,10 +6215,11 @@ async function scrapeNyaa(animeName, episode = null, season = 1) {
  * Scrape torrents from AnimeTosho (aggregator)
  * @param {string} animeName - The anime name to search for
  * @param {number} episode - Optional specific episode number
+ * @param {boolean} isMovie - Whether this is a movie (skip episode filtering)
  * @returns {Promise<Array>} Array of torrent objects
  */
-async function scrapeAnimeTosho(animeName, episode = null, season = 1) {
-  const cacheKey = `tosho:${animeName}:S${season}:${episode || 'all'}`;
+async function scrapeAnimeTosho(animeName, episode = null, season = 1, isMovie = false) {
+  const cacheKey = isMovie ? `tosho:movie:${animeName}` : `tosho:${animeName}:S${season}:${episode || 'all'}`;
   
   // Check cache
   const cached = torrentCache.get(cacheKey);
@@ -6318,8 +6325,13 @@ async function scrapeAnimeTosho(animeName, episode = null, season = 1) {
     });
     
     // EPISODE VALIDATION: Filter to only torrents matching requested episode
+    // For movies, pass contentTypeHint='movie' to accept movie torrents
     let validatedTorrents = torrents;
-    if (episode) {
+    if (isMovie) {
+      const beforeCount = torrents.length;
+      validatedTorrents = filterTorrentsByEpisode(torrents, 1, 1, animeName, [], 60, 'movie');
+      console.log(`[AnimeTosho] Movie validation: ${validatedTorrents.length}/${beforeCount} torrents match movie pattern`);
+    } else if (episode) {
       const beforeCount = torrents.length;
       validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, animeName);
       console.log(`[AnimeTosho] Episode validation: ${validatedTorrents.length}/${beforeCount} torrents match E${episode} S${season}`);
@@ -6343,16 +6355,16 @@ async function scrapeAnimeTosho(animeName, episode = null, season = 1) {
  * @param {number} anidbId - The AniDB ID to search for
  * @param {number} episode - Optional specific episode number
  * @param {number} season - Season number for multi-season shows
- * @param {string} animeName - Optional anime name for additional filtering
+ * @param {boolean} isMovie - Whether this is a movie (skip episode filtering)
  * @returns {Promise<Array>} Array of torrent objects
  */
-async function scrapeAnimeToshoByAniDbId(anidbId, episode = null, season = 1, animeName = null) {
+async function scrapeAnimeToshoByAniDbId(anidbId, episode = null, season = 1, isMovie = false) {
   if (!anidbId) {
     console.log('[AnimeTosho-AniDB] No AniDB ID provided');
     return [];
   }
   
-  const cacheKey = `tosho-aid:${anidbId}:S${season}:${episode || 'all'}`;
+  const cacheKey = isMovie ? `tosho-aid:movie:${anidbId}` : `tosho-aid:${anidbId}:S${season}:${episode || 'all'}`;
   
   // Check cache
   const cached = torrentCache.get(cacheKey);
@@ -6441,11 +6453,15 @@ async function scrapeAnimeToshoByAniDbId(anidbId, episode = null, season = 1, an
     
     // EPISODE VALIDATION: Filter to only torrents matching requested episode
     // Note: AniDB-based search is already accurate, but we still validate episode patterns
-    // Pass animeName if available for additional show title validation
     let validatedTorrents = torrents;
-    if (episode) {
+    if (isMovie) {
+      // For movies, skip strict episode filtering - just return all torrents for this AniDB ID
       const beforeCount = torrents.length;
-      validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, animeName);
+      validatedTorrents = filterTorrentsByEpisode(torrents, 1, 1, null, [], 60, 'movie');
+      console.log(`[AnimeTosho-AniDB] Movie validation: ${validatedTorrents.length}/${beforeCount} torrents match movie pattern`);
+    } else if (episode) {
+      const beforeCount = torrents.length;
+      validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, null);
       console.log(`[AnimeTosho-AniDB] Episode validation: ${validatedTorrents.length}/${beforeCount} torrents match E${episode} S${season}`);
     }
     
@@ -6466,9 +6482,10 @@ async function scrapeAnimeToshoByAniDbId(anidbId, episode = null, season = 1, an
  * @param {Array<string>} synonyms - Alternative titles for the anime
  * @param {number} episode - Optional specific episode number
  * @param {number} season - Season number
+ * @param {boolean} isMovie - Whether this is a movie (skip episode filtering)
  * @returns {Promise<Array>} Array of torrent objects
  */
-async function scrapeNyaaWithSynonyms(synonyms, episode = null, season = 1) {
+async function scrapeNyaaWithSynonyms(synonyms, episode = null, season = 1, isMovie = false) {
   if (!synonyms || synonyms.length === 0) {
     return [];
   }
@@ -6481,7 +6498,7 @@ async function scrapeNyaaWithSynonyms(synonyms, episode = null, season = 1) {
     if (!synonym || synonym.length < 3) continue;
     
     try {
-      const results = await scrapeNyaa(synonym, episode, season);
+      const results = await scrapeNyaa(synonym, episode, season, isMovie);
       
       for (const torrent of results) {
         if (!seenHashes.has(torrent.infoHash)) {
@@ -6516,27 +6533,30 @@ async function scrapeNyaaWithSynonyms(synonyms, episode = null, season = 1) {
  * 1. AnimeTosho by AniDB ID (most accurate, 100% reliable when available)
  * 2. Title-based search on Nyaa and AnimeTosho
  * 3. Synonym-based search if primary title yields no results
+ * @param {string} contentType - 'movie', 'episode', or null (for regular episodes)
  */
-async function getTorrentStreams(anime, episode = null, season = 1) {
+async function getTorrentStreams(anime, episode = null, season = 1, contentType = null) {
   // Handle both old string-based calls and new object-based calls
   const animeName = typeof anime === 'string' ? anime : 
     (anime.name || anime.title?.userPreferred || anime.title?.romaji || 'Unknown');
   const anidbId = typeof anime === 'object' ? (anime.anidb_id || anime.adb) : null;
   const synonyms = typeof anime === 'object' ? (anime.synonyms || []) : [];
+  const isMovie = contentType === 'movie';
   
-  console.log(`[TorrentStreams] Searching for "${animeName}" E${episode || 'all'} S${season}${anidbId ? ` (AniDB: ${anidbId})` : ''}`);
+  console.log(`[TorrentStreams] Searching for "${animeName}" ${isMovie ? '(MOVIE)' : `E${episode || 'all'} S${season}`}${anidbId ? ` (AniDB: ${anidbId})` : ''}`);
   
   // Build parallel search tasks
   const searchTasks = [];
   
   // Priority 1: AniDB ID-based search (most accurate)
+  // For movies, skip episode filtering by passing isMovie flag
   if (anidbId) {
-    searchTasks.push(scrapeAnimeToshoByAniDbId(anidbId, episode, season));
+    searchTasks.push(scrapeAnimeToshoByAniDbId(anidbId, isMovie ? null : episode, season, isMovie));
   }
   
   // Priority 2: Title-based search on both Nyaa and AnimeTosho
-  searchTasks.push(scrapeNyaa(animeName, episode, season));
-  searchTasks.push(scrapeAnimeTosho(animeName, episode, season));
+  searchTasks.push(scrapeNyaa(animeName, isMovie ? null : episode, season, isMovie));
+  searchTasks.push(scrapeAnimeTosho(animeName, isMovie ? null : episode, season, isMovie));
   
   // Execute all searches in parallel
   const results = await Promise.all(searchTasks);
@@ -6579,7 +6599,7 @@ async function getTorrentStreams(anime, episode = null, season = 1) {
   // If no results and we have synonyms, try synonym search
   if (combined.length === 0 && synonyms.length > 0) {
     console.log(`[TorrentStreams] No results for primary title, trying ${synonyms.length} synonyms...`);
-    const synonymResults = await scrapeNyaaWithSynonyms(synonyms, episode, season);
+    const synonymResults = await scrapeNyaaWithSynonyms(synonyms, episode, season, isMovie);
     
     for (const torrent of synonymResults) {
       if (!seen.has(torrent.infoHash)) {
@@ -8138,10 +8158,10 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
       // Pass full anime object for ID-based torrent search (AniDB ID is most accurate)
       // The getTorrentStreams function handles both object and string inputs
       console.log(`[Stream] Enriched anime: anidb_id=${enrichedAnime.anidb_id}, mal_id=${enrichedAnime.mal_id}, synonyms=${enrichedAnime.synonyms?.length || 0}`);
-      const torrents = await getTorrentStreams(enrichedAnime, absoluteEpisode, season);
+      const torrents = await getTorrentStreams(enrichedAnime, absoluteEpisode, season, type === 'movie' ? 'movie' : null);
       
       if (torrents.length > 0) {
-        console.log(`[Stream] Found ${torrents.length} torrent streams for "${animeName}" E${absoluteEpisode}`);
+        console.log(`[Stream] Found ${torrents.length} torrent streams for "${animeName}" ${type === 'movie' ? '(MOVIE)' : `E${absoluteEpisode}`}`);
         
         // Check if user has debrid configured
         const hasDebrid = config.debridProvider && config.debridApiKey;
