@@ -2870,9 +2870,11 @@ const MAL_SEASON_TO_PARENT = {
   35972: 6702,    // Final Series
   48040: 6702,    // Final Series 2
   
-  // Jujutsu Kaisen - Parent: 40748 (using IMDB-mapped entry)
-  48561: 40748,   // Season 2 (or same series different entry)
-  51009: 40748,   // Season 2 Part 2
+  // Jujutsu Kaisen - Parent: 38777 (main series with IMDB tt12343534)
+  48561: 38777,   // Season 2
+  51009: 38777,   // Season 2 Part 2
+  57658: 38777,   // The Culling Game Part 1 (Season 3)
+  59654: 38777,   // Hidden Inventory/Premature Death arc
   
   // Banished from Hero's Party - Parent: 44037
   55719: 44037,   // Season 2
@@ -3871,9 +3873,15 @@ function generateSeasonOptions(filterOptions, currentSeason, showCounts, catalog
 // ===== MANIFEST =====
 
 function getManifest(filterOptions, showCounts = true, catalogData = null, selectedCatalogs = ['top', 'season', 'airing', 'movies'], config = {}) {
-  const genreOptions = showCounts && filterOptions.genres?.withCounts 
-    ? filterOptions.genres.withCounts.filter(g => !g.toLowerCase().startsWith('animation'))
-    : (filterOptions.genres?.list || []).filter(g => g.toLowerCase() !== 'animation');
+  // Safely filter genre options - handle non-string items gracefully
+  let genreOptions = [];
+  if (showCounts && filterOptions.genres?.withCounts) {
+    genreOptions = filterOptions.genres.withCounts
+      .filter(g => typeof g === 'string' && !g.toLowerCase().startsWith('animation'));
+  } else if (filterOptions.genres?.list) {
+    genreOptions = filterOptions.genres.list
+      .filter(g => typeof g === 'string' && g.toLowerCase() !== 'animation');
+  }
   
   // Generate dynamic season options based on current date
   // Shows: Current season + past seasons, with "Upcoming" for all future seasons
@@ -3910,13 +3918,21 @@ function getManifest(filterOptions, showCounts = true, catalogData = null, selec
       .map(day => `${day} (${weekdayCounts[day]})`);
   } else {
     weekdayOptions = showCounts && filterOptions.weekdays?.withCounts 
-      ? filterOptions.weekdays.withCounts 
-      : (filterOptions.weekdays?.list || []);
+      ? filterOptions.weekdays.withCounts.filter(w => typeof w === 'string')
+      : (filterOptions.weekdays?.list || []).filter(w => typeof w === 'string');
   }
   
-  const movieOptions = showCounts && filterOptions.movieGenres?.withCounts 
-    ? ['Upcoming', 'New Releases', ...filterOptions.movieGenres.withCounts.filter(g => !g.toLowerCase().startsWith('animation'))]
-    : ['Upcoming', 'New Releases', ...(filterOptions.movieGenres?.list || []).filter(g => g.toLowerCase() !== 'animation')];
+  // Safely build movie options
+  let movieOptions = ['Upcoming', 'New Releases'];
+  if (showCounts && filterOptions.movieGenres?.withCounts) {
+    movieOptions = ['Upcoming', 'New Releases', 
+      ...filterOptions.movieGenres.withCounts.filter(g => typeof g === 'string' && !g.toLowerCase().startsWith('animation'))
+    ];
+  } else if (filterOptions.movieGenres?.list) {
+    movieOptions = ['Upcoming', 'New Releases',
+      ...(filterOptions.movieGenres.list || []).filter(g => typeof g === 'string' && g.toLowerCase() !== 'animation')
+    ];
+  }
 
   // Build catalog list, filtering out hidden catalogs
   const allCatalogs = [
@@ -4063,34 +4079,51 @@ function getManifest(filterOptions, showCounts = true, catalogData = null, selec
 
 // ===== CONFIG PARSING =====
 
+/**
+ * Parse configuration string from URL path.
+ * Format: key=value|key=value|... (Torrentio-style, pipe-separated)
+ * This function is designed to be bulletproof - any malformed input returns defaults.
+ */
 function parseConfig(configStr) {
-  const config = { 
+  // Default config - returned if anything goes wrong
+  const defaultConfig = { 
     excludeLongRunning: false, 
     showCounts: true, 
-    selectedCatalogs: ['top', 'season', 'airing', 'movies'], // Default: all 4 standard catalogs
+    selectedCatalogs: ['top', 'season', 'airing', 'movies'],
     anilistToken: '', 
     malToken: '', 
     userId: '',
-    // Debrid settings
     debridProvider: '',
     debridApiKey: '',
-    // Stream source settings
-    streamMode: 'both', // 'https', 'torrents', 'both'
+    streamMode: 'both',
     enableAllAnime: true,
     preferRaw: false,
-    // Subtitle preferences
     subtitleLanguages: ['en', 'ja'],
     subdlApiKey: ''
   };
   
-  if (!configStr) return config;
+  // Early return for empty/null/undefined
+  if (!configStr || typeof configStr !== 'string' || configStr.trim() === '') {
+    return defaultConfig;
+  }
   
-  // Keep original for case-sensitive values, lowercase for flag detection
-  const decodedConfigStr = decodeURIComponent(configStr);
-  const lowerConfigStr = decodedConfigStr.toLowerCase();
+  // Clone default config to avoid mutations
+  const config = { ...defaultConfig };
   
-  // Check for flag presence in the string
-  if (lowerConfigStr.includes('nolongrunning') || lowerConfigStr.includes('excludelongrunning')) {
+  try {
+    // Safely decode URI component
+    let decodedConfigStr;
+    try {
+      decodedConfigStr = decodeURIComponent(configStr);
+    } catch (decodeError) {
+      console.error(`[Config] Failed to decode config string: ${configStr}`);
+      return config;
+    }
+    
+    const lowerConfigStr = decodedConfigStr.toLowerCase();
+    
+    // Check for flag presence in the string
+    if (lowerConfigStr.includes('nolongrunning') || lowerConfigStr.includes('excludelongrunning')) {
     config.excludeLongRunning = true;
   }
   
@@ -4100,7 +4133,7 @@ function parseConfig(configStr) {
   }
   
   // Pre-extract sc= value BEFORE general parsing (since it contains underscores like mal_Watching)
-  const scMatch = decodedConfigStr.match(/\bsc=([^&|.]+)/i);
+  const scMatch = decodedConfigStr.match(/\bsc=([^&|]+)/i);
   if (scMatch) {
     config.selectedCatalogs = scMatch[1].split(',')
       .map(c => c.trim())
@@ -4108,17 +4141,33 @@ function parseConfig(configStr) {
   }
   
   // Pre-extract uid= value BEFORE general parsing (since it contains underscores like al_7671660)
-  const uidMatch = decodedConfigStr.match(/\buid=([^&|.]+)/i);
+  const uidMatch = decodedConfigStr.match(/\buid=([^&|]+)/i);
   if (uidMatch) {
     config.userId = decodeURIComponent(uidMatch[1]);
   }
   
+  // Pre-extract dk= (debrid key) - can contain dashes and special chars
+  const dkMatch = decodedConfigStr.match(/\bdk=([^&|]+)/i);
+  if (dkMatch) {
+    config.debridApiKey = decodeURIComponent(dkMatch[1]);
+  }
+  
+  // Pre-extract sk= (SubDL key) - can contain dashes and special chars
+  const skMatch = decodedConfigStr.match(/\bsk=([^&|]+)/i);
+  if (skMatch) {
+    config.subdlApiKey = decodeURIComponent(skMatch[1]);
+  }
+  
   // Parse key-value pairs (use original string to preserve case for API keys)
-  const params = decodedConfigStr.split(/[._|&]/);
+  // Split only on | and & (not . which appears in API keys)
+  const params = decodedConfigStr.split(/[|&]/);
   for (const param of params) {
-    const [rawKey, ...valueParts] = param.split(/[=-]/);
+    // Split on first = only to preserve values with = in them
+    const eqIndex = param.indexOf('=');
+    if (eqIndex === -1) continue;
+    const rawKey = param.substring(0, eqIndex);
+    const value = param.substring(eqIndex + 1);
     const key = rawKey.toLowerCase(); // Key is case-insensitive
-    const value = valueParts.join('-'); // Preserve original case for value
     
     if (key === 'showcounts') {
       const lv = value.toLowerCase();
@@ -4175,13 +4224,36 @@ function parseConfig(configStr) {
     if (key === 'slang' && value) {
       config.subtitleLanguages = value.split(',').map(l => l.trim().toLowerCase()).filter(Boolean);
     }
-    // SubDL API key
-    if (key === 'sk' && value) {
+    // SubDL API key (already extracted above, but keep for legacy support)
+    if (key === 'sk' && value && !config.subdlApiKey) {
       config.subdlApiKey = decodeURIComponent(value);
+    }
+    // Debrid API key (already extracted above, but keep for legacy support)
+    if (key === 'dk' && value && !config.debridApiKey) {
+      config.debridApiKey = decodeURIComponent(value);
     }
   }
   
-  return config;
+    return config;
+  } catch (error) {
+    // Log the error but return default config to prevent 500 errors
+    console.error(`[Config] Parse error for "${configStr}": ${error.message}`);
+    return { 
+      excludeLongRunning: false, 
+      showCounts: true, 
+      selectedCatalogs: ['top', 'season', 'airing', 'movies'],
+      anilistToken: '', 
+      malToken: '', 
+      userId: '',
+      debridProvider: '',
+      debridApiKey: '',
+      streamMode: 'both',
+      enableAllAnime: true,
+      preferRaw: false,
+      subtitleLanguages: ['en', 'ja'],
+      subdlApiKey: ''
+    };
+  }
 }
 
 // ===== STREAM HANDLING =====
@@ -6567,29 +6639,102 @@ async function checkRealDebridCacheBatch(infoHashes, apiKey) {
   try {
     // Real-Debrid instant availability accepts multiple hashes separated by /
     const hashesPath = infoHashes.join('/');
+    console.log(`[RD] Checking cache for ${infoHashes.length} hashes`);
+    
     const response = await fetch(
       `https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/${hashesPath}`,
       { headers: { 'Authorization': `Bearer ${apiKey}` } }
     );
     
     if (!response.ok) {
-      console.error(`[RD] Cache check failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[RD] Cache check failed: ${response.status} - ${errorText.substring(0, 200)}`);
       infoHashes.forEach(h => results.set(h.toLowerCase(), null));
       return results;
     }
     
     const data = await response.json();
+    console.log(`[RD] Cache check response keys: ${Object.keys(data).length}`);
     
     // Real-Debrid returns { "hash": { "rd": [...] } } for cached torrents
+    // If hash is not in response at all, it's not cached
+    let cachedCount = 0;
     for (const hash of infoHashes) {
       const lowerHash = hash.toLowerCase();
-      const cached = data[lowerHash]?.rd && data[lowerHash].rd.length > 0;
+      // Check if the hash exists in response and has rd array with content
+      const hashData = data[lowerHash] || data[hash];
+      const cached = hashData?.rd && Array.isArray(hashData.rd) && hashData.rd.length > 0;
       results.set(lowerHash, cached);
+      if (cached) cachedCount++;
     }
     
+    console.log(`[RD] Cache check results: ${results.size} hashes, ${cachedCount} cached`);
     return results;
   } catch (error) {
     console.error(`[RD] Cache check error: ${error.message}`);
+    infoHashes.forEach(h => results.set(h.toLowerCase(), null));
+    return results;
+  }
+}
+
+/**
+ * Check if torrents are cached on TorBox (batch check)
+ * Uses POST method with hashes in body, following Torrentio's implementation
+ * @param {string[]} infoHashes - Array of info hashes to check
+ * @param {string} apiKey - TorBox API key
+ * @returns {Promise<Map<string, boolean>>} - Map of infoHash -> cached status
+ */
+async function checkTorBoxCacheBatch(infoHashes, apiKey) {
+  const results = new Map();
+  
+  try {
+    // TorBox uses POST /api/torrents/checkcached with hashes in body
+    // Reference: https://api.torbox.app/v1/api/torrents/checkcached
+    const response = await fetch(
+      `https://api.torbox.app/v1/api/torrents/checkcached?format=list&list_files=true`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ hashes: infoHashes })
+      }
+    );
+    
+    if (!response.ok) {
+      console.error(`[TB] Cache check failed: ${response.status}`);
+      infoHashes.forEach(h => results.set(h.toLowerCase(), null));
+      return results;
+    }
+    
+    const data = await response.json();
+    console.log(`[TB] Cache check response: ${JSON.stringify(data).substring(0, 200)}`);
+    
+    // TorBox with format=list returns { "success": true, "data": [{hash, files, ...}, ...] }
+    if (data.success && Array.isArray(data.data)) {
+      // Create a set of cached hashes
+      const cachedHashes = new Set(data.data.map(item => item.hash?.toLowerCase()));
+      
+      for (const hash of infoHashes) {
+        const lowerHash = hash.toLowerCase();
+        results.set(lowerHash, cachedHashes.has(lowerHash));
+      }
+    } else if (data.success && typeof data.data === 'object') {
+      // Fallback for object format
+      for (const hash of infoHashes) {
+        const lowerHash = hash.toLowerCase();
+        results.set(lowerHash, data.data[lowerHash] === true || data.data[hash] === true);
+      }
+    } else {
+      console.error(`[TB] Unexpected response format:`, data);
+      infoHashes.forEach(h => results.set(h.toLowerCase(), null));
+    }
+    
+    console.log(`[TB] Cache check results: ${results.size} hashes, ${Array.from(results.values()).filter(v => v === true).length} cached`);
+    return results;
+  } catch (error) {
+    console.error(`[TB] Cache check error: ${error.message}`);
     infoHashes.forEach(h => results.set(h.toLowerCase(), null));
     return results;
   }
@@ -6612,7 +6757,8 @@ async function checkDebridCacheBatch(infoHashes, provider, apiKey) {
       return checkAllDebridCacheBatch(infoHashes, apiKey);
     case 'realdebrid':
       return checkRealDebridCacheBatch(infoHashes, apiKey);
-    // TODO: Add other providers
+    case 'torbox':
+      return checkTorBoxCacheBatch(infoHashes, apiKey);
     default:
       // Unknown provider - return all as unknown
       const results = new Map();
@@ -6736,6 +6882,152 @@ async function resolveAllDebrid(magnet, apiKey, fileIndex = 0, episode = null, s
     return { status: 'downloading', message: 'Download started on AllDebrid but taking a while. Check your AllDebrid account or try a cached ⚡ torrent.' };
   } catch (error) {
     console.error(`[AD Resolve] Error: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Add magnet to TorBox and get download link
+ * @param {string} magnet - Magnet link
+ * @param {string} apiKey - TorBox API key
+ * @param {number} fileIndex - File index to select (default 0)
+ * @param {number|null} episode - Episode number for smart file selection
+ * @param {number} season - Season number
+ * @param {string} expectedAnimeName - Expected anime name for validation
+ * @returns {Promise<string|object|null>} - Direct URL, status object, or null on error
+ */
+async function resolveTorBox(magnet, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '') {
+  try {
+    console.log(`[TB Resolve] Starting resolution${episode ? ` for S${season}E${episode}` : ''}${expectedAnimeName ? ` (expecting: "${expectedAnimeName}")` : ''}`);
+    
+    // Step 1: Create torrent
+    const formData = new FormData();
+    formData.append('magnet', magnet);
+    formData.append('seed', '1'); // Seed ratio
+    formData.append('allow_zip', 'false');
+    
+    const createResponse = await fetch('https://api.torbox.app/v1/api/torrents/createtorrent', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      body: formData
+    });
+    
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error(`[TB Resolve] Create failed: ${createResponse.status} - ${errorText}`);
+      throw new Error(`Failed to create torrent: ${createResponse.status}`);
+    }
+    
+    const createData = await createResponse.json();
+    console.log(`[TB Resolve] Create response: ${JSON.stringify(createData).substring(0, 200)}`);
+    
+    if (!createData.success) {
+      throw new Error(`TorBox error: ${createData.detail || 'Unknown error'}`);
+    }
+    
+    const torrentId = createData.data?.torrent_id;
+    if (!torrentId) {
+      throw new Error('Failed to get torrent ID');
+    }
+    
+    // Step 2: Wait for torrent to be ready (poll status)
+    let attempts = 0;
+    const maxAttempts = 30;
+    
+    while (attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 2000)); // Wait 2 seconds
+      attempts++;
+      
+      console.log(`[TB Resolve] Checking status ${attempts}/${maxAttempts}`);
+      
+      const infoResponse = await fetch(
+        `https://api.torbox.app/v1/api/torrents/mylist?id=${torrentId}`,
+        { headers: { 'Authorization': `Bearer ${apiKey}` } }
+      );
+      
+      if (!infoResponse.ok) {
+        console.error(`[TB Resolve] Info failed: ${infoResponse.status}`);
+        continue;
+      }
+      
+      const infoData = await infoResponse.json();
+      
+      if (!infoData.success) {
+        console.error(`[TB Resolve] Info error: ${infoData.detail}`);
+        continue;
+      }
+      
+      const torrent = infoData.data;
+      const status = torrent?.download_state;
+      
+      console.log(`[TB Resolve] Status: ${status}, Progress: ${torrent?.progress}%`);
+      
+      // "completed" or "cached" means ready
+      if (status === 'completed' || status === 'cached' || torrent?.download_finished === true) {
+        console.log(`[TB Resolve] Torrent ready! Getting download link...`);
+        
+        // Get files
+        const files = torrent?.files || [];
+        const videoFiles = files.filter(f => /\.(mkv|mp4|avi|webm|ts|m2ts)$/i.test(f.name || f.short_name));
+        
+        if (videoFiles.length === 0) {
+          console.error(`[TB Resolve] No video files found`);
+          return null;
+        }
+        
+        // Smart file selection for episode
+        let selectedFile = videoFiles[0];
+        
+        if (episode && videoFiles.length > 1) {
+          console.log(`[TB Resolve] Looking for episode ${episode} in ${videoFiles.length} files`);
+          
+          for (const file of videoFiles) {
+            const filename = file.name || file.short_name || '';
+            const epMatch = extractEpisodeNumber(filename);
+            if (epMatch === episode) {
+              selectedFile = file;
+              console.log(`[TB Resolve] Found episode ${episode}: ${filename}`);
+              break;
+            }
+          }
+        }
+        
+        // Request download link for the selected file
+        const fileId = selectedFile.id;
+        const linkResponse = await fetch(
+          `https://api.torbox.app/v1/api/torrents/requestdl?token=${apiKey}&torrent_id=${torrentId}&file_id=${fileId}`,
+          { headers: { 'Authorization': `Bearer ${apiKey}` } }
+        );
+        
+        if (!linkResponse.ok) {
+          console.error(`[TB Resolve] Link request failed: ${linkResponse.status}`);
+          return null;
+        }
+        
+        const linkData = await linkResponse.json();
+        
+        if (linkData.success && linkData.data) {
+          console.log(`[TB Resolve] Got download link`);
+          return linkData.data;
+        } else {
+          console.error(`[TB Resolve] No download link in response`);
+          return null;
+        }
+      }
+      
+      // "downloading" or "pending" - still in progress
+      if (status === 'error' || status === 'stalled') {
+        console.error(`[TB Resolve] Torrent failed with status: ${status}`);
+        return { status: 'error', message: `Download failed: ${status}` };
+      }
+    }
+    
+    // Timeout
+    console.log(`[TB Resolve] Timeout waiting for torrent`);
+    return { status: 'downloading', message: 'Download started on TorBox but taking a while. Check your TorBox account or try a cached ⚡ torrent.' };
+    
+  } catch (error) {
+    console.error(`[TB Resolve] Error: ${error.message}`);
     return null;
   }
 }
@@ -6968,6 +7260,9 @@ async function resolveDebrid(magnet, infoHash, provider, apiKey, fileIndex = 0, 
       break;
     case 'alldebrid':
       result = await resolveAllDebrid(magnet, apiKey, fileIndex, episode, season, expectedAnimeName);
+      break;
+    case 'torbox':
+      result = await resolveTorBox(magnet, apiKey, fileIndex, episode, season, expectedAnimeName);
       break;
     // Add more providers as needed
     default:
