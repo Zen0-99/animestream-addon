@@ -280,6 +280,186 @@ async function getIdMappingsFromImdb(imdbId, season = null) {
   }
 }
 
+// ===== PARENT SERIES DETECTION (AUTO) =====
+// Automatically detect if an anime is a sequel and find the parent series
+// Uses AniList relations API to traverse the prequel chain
+
+// Cache for parent MAL ID lookups (separate from main ID cache)
+const parentMalIdCache = new Map(); // malId -> parentMalId or null
+
+/**
+ * Find the parent (root) series MAL ID for a given anime
+ * Traverses the prequel chain using AniList relations API
+ * @param {number} malId - The MAL ID to find parent for
+ * @param {number} anilistId - Optional AniList ID (faster if available)
+ * @returns {Promise<number|null>} The root parent MAL ID, or null if this is already the root
+ */
+async function findParentMalId(malId, anilistId = null) {
+  // Check manual mapping first (for edge cases or overrides)
+  if (MAL_SEASON_TO_PARENT[malId]) {
+    return MAL_SEASON_TO_PARENT[malId];
+  }
+  
+  // Check cache
+  if (parentMalIdCache.has(malId)) {
+    return parentMalIdCache.get(malId);
+  }
+  
+  // Limit cache size
+  if (parentMalIdCache.size > 500) {
+    const entries = Array.from(parentMalIdCache.entries());
+    entries.slice(0, 250).forEach(([key]) => parentMalIdCache.delete(key));
+  }
+  
+  try {
+    // Get AniList ID if not provided
+    if (!anilistId) {
+      const mappings = await getIdMappings(malId, 'mal');
+      anilistId = mappings?.anilist;
+    }
+    
+    if (!anilistId) {
+      parentMalIdCache.set(malId, null);
+      return null;
+    }
+    
+    // Query AniList for relations
+    const query = `
+      query ($id: Int) {
+        Media(id: $id, type: ANIME) {
+          id
+          idMal
+          relations {
+            edges {
+              relationType
+              node {
+                id
+                idMal
+                type
+                format
+              }
+            }
+          }
+        }
+      }
+    `;
+    
+    const response = await fetch(ANILIST_API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { id: anilistId } })
+    });
+    
+    if (!response.ok) {
+      console.log(`[ParentDetect] AniList API error: ${response.status}`);
+      parentMalIdCache.set(malId, null);
+      return null;
+    }
+    
+    const data = await response.json();
+    const relations = data?.data?.Media?.relations?.edges || [];
+    
+    // Look for PREQUEL or PARENT relation
+    const prequelRelation = relations.find(edge => 
+      (edge.relationType === 'PREQUEL' || edge.relationType === 'PARENT') &&
+      edge.node?.type === 'ANIME' &&
+      edge.node?.idMal
+    );
+    
+    if (prequelRelation) {
+      const prequelMalId = prequelRelation.node.idMal;
+      const prequelAnilistId = prequelRelation.node.id;
+      
+      // Recursively find the root parent (with depth limit to prevent infinite loops)
+      const recursiveParent = await findParentMalIdRecursive(prequelMalId, prequelAnilistId, 5);
+      const finalParent = recursiveParent || prequelMalId;
+      
+      parentMalIdCache.set(malId, finalParent);
+      console.log(`[ParentDetect] MAL:${malId} -> parent MAL:${finalParent}`);
+      return finalParent;
+    }
+    
+    // No prequel found - this is the root series
+    parentMalIdCache.set(malId, null);
+    return null;
+    
+  } catch (error) {
+    console.error(`[ParentDetect] Error finding parent for MAL:${malId}:`, error.message);
+    parentMalIdCache.set(malId, null);
+    return null;
+  }
+}
+
+/**
+ * Recursive helper to find root parent with depth limit
+ * @param {number} malId - Current MAL ID
+ * @param {number} anilistId - Current AniList ID  
+ * @param {number} depth - Remaining recursion depth
+ * @returns {Promise<number|null>} Root parent MAL ID
+ */
+async function findParentMalIdRecursive(malId, anilistId, depth) {
+  if (depth <= 0) return null;
+  
+  // Check manual mapping first
+  if (MAL_SEASON_TO_PARENT[malId]) {
+    return MAL_SEASON_TO_PARENT[malId];
+  }
+  
+  // Check cache
+  if (parentMalIdCache.has(malId)) {
+    const cached = parentMalIdCache.get(malId);
+    return cached !== null ? cached : null;
+  }
+  
+  try {
+    const query = `
+      query ($id: Int) {
+        Media(id: $id, type: ANIME) {
+          relations {
+            edges {
+              relationType
+              node {
+                id
+                idMal
+                type
+              }
+            }
+          }
+        }
+      }
+    `;
+    
+    const response = await fetch(ANILIST_API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { id: anilistId } })
+    });
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    const relations = data?.data?.Media?.relations?.edges || [];
+    
+    const prequelRelation = relations.find(edge => 
+      (edge.relationType === 'PREQUEL' || edge.relationType === 'PARENT') &&
+      edge.node?.type === 'ANIME' &&
+      edge.node?.idMal
+    );
+    
+    if (prequelRelation) {
+      return await findParentMalIdRecursive(
+        prequelRelation.node.idMal,
+        prequelRelation.node.id,
+        depth - 1
+      ) || prequelRelation.node.idMal;
+    }
+    
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
 // ===== ANILIST SCROBBLING API =====
 // Based on syncribullet: https://github.com/aliyss/syncribullet/blob/main/src/utils/receivers/anilist/api/sync.ts
 
@@ -1679,28 +1859,11 @@ const CONFIGURE_HTML = `<!doctype html>
       }
     };
     
-    // Handle install button click with error detection
+    // Handle install button click - no error detection since stremio:// handler
+    // varies by platform and causes false positives. Users can use Copy or Web install.
     appBtn.onclick = (e) => {
-      const stremioUrl = appBtn.href;
-      
-      // Try to detect if stremio:// protocol fails
-      // Set a flag, wait briefly, if page is still visible protocol likely failed
-      let didNavigate = false;
-      const checkTimer = setTimeout(() => {
-        if (!didNavigate && document.visibilityState === 'visible') {
-          showToast('Stremio not detected. Try Copy button or Web install.', true);
-        }
-      }, 1500);
-      
-      document.addEventListener('visibilitychange', function handler() {
-        if (document.visibilityState === 'hidden') {
-          didNavigate = true;
-          clearTimeout(checkTimer);
-          document.removeEventListener('visibilitychange', handler);
-        }
-      });
-      
-      // Let the default link behavior proceed
+      // Just let the default link behavior proceed
+      // The stremio:// protocol handler will open Stremio if installed
     };
     
     function rerender() {
@@ -2844,8 +3007,11 @@ const POSTER_OVERRIDES = {
   // tt35348212, tt37578217, tt37894464, tt37836273, tt39254742, tt36294552, tt38268282, tt37532731
 };
 
-// MAL Season-to-Parent mapping: Maps sequel/season MAL IDs to their parent series
-// This allows MAL lists with "Frieren Season 2" to show "Frieren" from our catalog
+// MAL Season-to-Parent mapping: Manual fallback for edge cases
+// Auto-detection via AniList relations API is tried first (see findParentMalId)
+// This manual map handles cases where:
+// 1. AniList relations are missing or incorrect
+// 2. The parent is a different franchise entry (not direct prequel)
 // Format: { seasonMalId: parentMalId }
 const MAL_SEASON_TO_PARENT = {
   // Fire Force (Enen no Shouboutai) - Parent: 38671
@@ -2927,6 +3093,12 @@ const MAL_SEASON_TO_PARENT = {
 // V5 cleanup: Removed items NOT IN CATALOG, kept items that still need enhancements
 // Items with fribb_kitsu/imdb_v5_high matches may still need background/cast overrides
 const METADATA_OVERRIDES = {
+  'tt12343534': { // Jujutsu Kaisen - catalog has ONA metadata (Kitsu 43748) instead of TV series (Kitsu 42765)
+    runtime: '24 min',
+    episodes: 24,
+    episodeCount: 24,
+    subtype: 'TV'
+  },
   'tt38691315': { // Style of Hiroshi Nohara Lunch - imdb_v5_medium
     runtime: '24 min',
     rating: 6.4,
@@ -3647,6 +3819,8 @@ async function handleAniListCatalog(listName, config, catalogData) {
     // Match to catalog by AniList ID or MAL ID (catalog uses anilist_id and mal_id fields)
     const results = [];
     const unmatchedEntries = [];
+    const pendingAutoDetect = []; // Entries needing auto-detection (done in batch for efficiency)
+    
     for (const entry of entries) {
       const anilistId = entry.media?.id;
       const malId = entry.media?.idMal;
@@ -3661,13 +3835,13 @@ async function handleAniListCatalog(listName, config, catalogData) {
         (malId && (a.mal_id == malId || a.id === 'mal-' + malId))
       );
       
-      // If no direct match and we have MAL ID, try season-to-parent mapping
+      // If no direct match and we have MAL ID, try season-to-parent mapping (manual first)
       if (!match && malId) {
         const parentMalId = MAL_SEASON_TO_PARENT[malId];
         if (parentMalId) {
           match = catalogData.find(a => a.mal_id == parentMalId);
           if (match) {
-            console.log('[AniList Catalog] Mapped season MAL:' + malId + ' (' + title + ') to parent ' + parentMalId + ' (' + match.name + ')');
+            console.log('[AniList Catalog] Mapped season MAL:' + malId + ' (' + title + ') to parent ' + parentMalId + ' (' + match.name + ') [manual]');
           }
         }
       }
@@ -3677,10 +3851,35 @@ async function handleAniListCatalog(listName, config, catalogData) {
         if (!results.some(r => r.id === match.id)) {
           results.push(match);
         }
+      } else if (malId) {
+        // Queue for auto-detection (will try AniList relations API)
+        pendingAutoDetect.push({ anilistId, malId, title });
       } else {
         unmatchedEntries.push({ anilistId, malId, title });
       }
     }
+    
+    // Try auto-detection for unmatched entries with MAL IDs (limit to 10 to avoid API spam)
+    const autoDetectBatch = pendingAutoDetect.slice(0, 10);
+    for (const entry of autoDetectBatch) {
+      try {
+        const parentMalId = await findParentMalId(entry.malId, entry.anilistId);
+        if (parentMalId) {
+          const match = catalogData.find(a => a.mal_id == parentMalId);
+          if (match && !results.some(r => r.id === match.id)) {
+            results.push(match);
+            console.log('[AniList Catalog] Mapped season MAL:' + entry.malId + ' (' + entry.title + ') to parent ' + parentMalId + ' (' + match.name + ') [auto]');
+            continue;
+          }
+        }
+      } catch (e) {
+        // Auto-detect failed, add to unmatched
+      }
+      unmatchedEntries.push(entry);
+    }
+    
+    // Add remaining unprocessed entries to unmatched
+    unmatchedEntries.push(...pendingAutoDetect.slice(10));
     
     console.log('[AniList Catalog] Matched ' + results.length + '/' + entries.length + ' anime to catalog');
     if (unmatchedEntries.length > 0 && unmatchedEntries.length <= 10) {
@@ -3749,6 +3948,8 @@ async function handleMalCatalog(listName, config, catalogData) {
     // Match to catalog by MAL ID (catalog uses mal_id field)
     const results = [];
     const unmatchedEntries = [];
+    const pendingAutoDetect = [];
+    
     for (const entry of entries) {
       const malId = entry.node?.id;
       const malIdStr = String(malId);
@@ -3761,13 +3962,13 @@ async function handleMalCatalog(listName, config, catalogData) {
         a.id === 'mal-' + malIdStr
       );
       
-      // If no direct match, try to find parent series via season mapping
+      // If no direct match, try to find parent series via season mapping (manual first)
       if (!match) {
         const parentMalId = MAL_SEASON_TO_PARENT[malId];
         if (parentMalId) {
           match = catalogData.find(a => a.mal_id == parentMalId);
           if (match) {
-            console.log('[MAL Catalog] Mapped season ' + malId + ' (' + (node.title || 'Unknown') + ') to parent ' + parentMalId + ' (' + match.name + ')');
+            console.log('[MAL Catalog] Mapped season ' + malId + ' (' + (node.title || 'Unknown') + ') to parent ' + parentMalId + ' (' + match.name + ') [manual]');
           }
         }
       }
@@ -3777,10 +3978,34 @@ async function handleMalCatalog(listName, config, catalogData) {
         if (!results.some(r => r.id === match.id)) {
           results.push(match);
         }
+      } else if (malId) {
+        pendingAutoDetect.push({ malId, title: node.title || 'Unknown' });
       } else {
         unmatchedEntries.push({ malId, title: node.title || 'Unknown' });
       }
     }
+    
+    // Try auto-detection for unmatched entries (limit to 10 to avoid API spam)
+    const autoDetectBatch = pendingAutoDetect.slice(0, 10);
+    for (const entry of autoDetectBatch) {
+      try {
+        const parentMalId = await findParentMalId(entry.malId);
+        if (parentMalId) {
+          const match = catalogData.find(a => a.mal_id == parentMalId);
+          if (match && !results.some(r => r.id === match.id)) {
+            results.push(match);
+            console.log('[MAL Catalog] Mapped season ' + entry.malId + ' (' + entry.title + ') to parent ' + parentMalId + ' (' + match.name + ') [auto]');
+            continue;
+          }
+        }
+      } catch (e) {
+        // Auto-detect failed
+      }
+      unmatchedEntries.push(entry);
+    }
+    
+    // Add remaining unprocessed entries to unmatched
+    unmatchedEntries.push(...pendingAutoDetect.slice(10));
     
     console.log('[MAL Catalog] Matched ' + results.length + '/' + entries.length + ' anime to catalog');
     if (unmatchedEntries.length > 0 && unmatchedEntries.length <= 10) {
@@ -4034,7 +4259,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null, selec
 
   return {
     id: 'community.animestream',
-    version: '1.3.0',
+    version: '1.3.1',
     name: 'AnimeStream',
     description: 'All your favorite Anime series and movies with filtering by genre, seasonal releases, currently airing and ratings. Stream both SUB and DUB options via AllAnime.',
     // CRITICAL: Use explicit resource objects with types and idPrefixes
@@ -4832,6 +5057,47 @@ function isRAWRelease(title) {
   // Japanese-only indicators
   if (/\[JPN?\]|\bJapanese\s+Only\b/i.test(title)) return true;
   return false;
+}
+
+/**
+ * Check if release is DUBBED (English or other language audio)
+ * Common DUB indicators in torrent titles
+ */
+function isDubbedRelease(title) {
+  // Explicit DUB tags
+  if (/\b(?:DUB(?:BED)?|DUAL|ENG?\s*DUB|ENGLISH\s*DUB(?:BED)?)\b/i.test(title)) return true;
+  // Funimation/Crunchyroll English releases often have English audio
+  if (/\b(?:Funimation|FUNI|CR\s*DUB)\b/i.test(title)) return true;
+  // [ENG] or (English) audio tag
+  if (/\[ENG(?:LISH)?\]|\(ENG(?:LISH)?\)/i.test(title)) return true;
+  // Multi audio indicator without subtitles mention
+  if (/\bMulti[\s-]?Audio\b/i.test(title)) return true;
+  return false;
+}
+
+/**
+ * Check if release has DUAL audio (Japanese + English/other)
+ */
+function isDualAudioRelease(title) {
+  // Explicit DUAL tags
+  if (/\bDUAL[\s-]?AUDIO\b/i.test(title)) return true;
+  // Multiple language audio tags
+  if (/\b(?:JPN?\s*\+\s*ENG?|ENG?\s*\+\s*JPN?)\b/i.test(title)) return true;
+  if (/\[JPN?\s*\+?\s*ENG?(?:LISH)?\]/i.test(title)) return true;
+  // "Multi" without being multi-sub
+  if (/\bMulti[\s-]?Audio\b/i.test(title) && !/\bMulti[\s-]?Sub/i.test(title)) return true;
+  return false;
+}
+
+/**
+ * Get audio type indicator for a torrent
+ * Returns: 'DUAL' | 'DUB' | 'RAW' | 'SUB' (default)
+ */
+function getAudioType(title, isRaw) {
+  if (isDualAudioRelease(title)) return 'DUAL';
+  if (isDubbedRelease(title)) return 'DUB';
+  if (isRaw) return 'RAW';
+  return 'SUB'; // Default: Japanese audio with subtitles
 }
 
 // ===== EPISODE MATCHING SYSTEM =====
@@ -7914,19 +8180,23 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
         
         // Add top 15 torrent streams with cache status labels
         for (const torrent of sortedTorrents.slice(0, 15)) {
-          // Build clean title like Torrentio: "AnimeName - Quality\n👤 Seeders 💾 Size"
+          // Build clean title like Torrentio: "AnimeName - Quality\n👤 Seeders 💾 Size 🔊 AudioType"
           const qualityLabel = torrent.quality !== 'Unknown' ? torrent.quality : '';
-          const rawTag = torrent.isRaw ? ' [RAW]' : '';
           const codecTag = /hevc|x265|h\.?265/i.test(torrent.title) ? ' HEVC' : 
                           /x264|h\.?264/i.test(torrent.title) ? ' x264' : '';
+          
+          // Get audio type (DUAL/DUB/RAW/SUB)
+          const audioType = getAudioType(torrent.title, torrent.isRaw);
+          const audioTag = audioType !== 'SUB' ? ` [${audioType}]` : ''; // Only show non-default
           
           // Format seeders and size for subtitle line (like Torrentio)
           const seedersDisplay = torrent.seeders > 0 ? `👤 ${torrent.seeders}` : '';
           const sizeDisplay = torrent.size ? `💾 ${torrent.size}` : '';
-          const groupDisplay = torrent.releaseGroup !== 'Unknown' ? `⚙️ ${torrent.releaseGroup}` : '';
+          // Show audio type with speaker icon instead of release group
+          const audioDisplay = `🔊 ${audioType}`;
           
-          // Build metadata line (seeders, size, group)
-          const metaParts = [seedersDisplay, sizeDisplay, groupDisplay].filter(Boolean);
+          // Build metadata line (seeders, size, audio type)
+          const metaParts = [seedersDisplay, sizeDisplay, audioDisplay].filter(Boolean);
           const metaLine = metaParts.length > 0 ? metaParts.join(' ') : '';
           
           if (hasDebrid) {
@@ -7939,8 +8209,8 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
             // ⚡ = cached (instant), ⏳ = not cached (will download), ❓ = unknown/error
             const cacheEmoji = isCached === true ? '⚡' : isCached === false ? '⏳' : '❓';
             
-            // Build title: "AnimeName - 1080p HEVC [RAW]\n👤 32 💾 542.13 MB ⚙️ SubsPlease"
-            const titleLine = `${animeName} - ${qualityLabel}${codecTag}${rawTag}`.trim().replace(/- $/, '').trim();
+            // Build title: "AnimeName - 1080p HEVC [DUB]\n👤 32 💾 542.13 MB 🔊 DUB"
+            const titleLine = `${animeName} - ${qualityLabel}${codecTag}${audioTag}`.trim().replace(/- $/, '').trim();
             const fullTitle = metaLine ? `${titleLine}\n${metaLine}` : titleLine;
             
             formattedStreams.push({
@@ -7953,7 +8223,7 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
             });
           } else {
             // No debrid configured - serve as magnet link for user's torrent client
-            const titleLine = `${animeName} - ${qualityLabel}${codecTag}${rawTag}`.trim().replace(/- $/, '').trim();
+            const titleLine = `${animeName} - ${qualityLabel}${codecTag}${audioTag}`.trim().replace(/- $/, '').trim();
             const fullTitle = metaLine ? `${titleLine}\n${metaLine}` : titleLine;
             
             formattedStreams.push({

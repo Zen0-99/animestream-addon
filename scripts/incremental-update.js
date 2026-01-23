@@ -58,6 +58,9 @@ const CONFIG = {
     },
     cinemeta: {
       baseUrl: 'https://v3-cinemeta.strem.io',
+    },
+    livechart: {
+      baseUrl: 'https://www.livechart.me/graphql',
     }
   },
   
@@ -67,6 +70,80 @@ const CONFIG = {
     airingGracePeriodDays: 14, // Days after last episode before marking as finished
   }
 };
+
+// ========== LIVECHART API (Primary for broadcast schedules) ==========
+
+/**
+ * Fetch currently airing anime schedules from LiveChart.me
+ * LiveChart has the most accurate broadcast schedules compared to Jikan
+ * @returns {Promise<{scheduleByMalId: Map, scheduleByAnilistId: Map} | null>}
+ */
+async function fetchLiveChartSchedules() {
+  log('Fetching broadcast schedules from LiveChart.me...', 'info');
+  
+  // GraphQL query for airing anime with schedules
+  const query = `
+    query {
+      airingAnimes(filter: {status: AIRING}) {
+        nodes {
+          databaseId
+          title
+          malId
+          anilistId
+          broadcastSchedule {
+            weekday
+            time
+          }
+        }
+      }
+    }
+  `;
+  
+  try {
+    const response = await fetch(CONFIG.api.livechart.baseUrl, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ query }),
+    });
+    
+    if (!response.ok) {
+      log(`LiveChart returned ${response.status}, will use Jikan fallback`, 'warning');
+      return null;
+    }
+    
+    const data = await response.json();
+    const animes = data?.data?.airingAnimes?.nodes || [];
+    
+    // Create lookup maps by MAL ID and AniList ID
+    const scheduleByMalId = new Map();
+    const scheduleByAnilistId = new Map();
+    
+    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    for (const anime of animes) {
+      const schedule = anime.broadcastSchedule;
+      if (schedule && schedule.weekday !== null && schedule.weekday !== undefined) {
+        const entry = {
+          day: weekdays[schedule.weekday] || null,
+          time: schedule.time || null
+        };
+        
+        if (anime.malId) scheduleByMalId.set(anime.malId, entry);
+        if (anime.anilistId) scheduleByAnilistId.set(anime.anilistId, entry);
+      }
+    }
+    
+    log(`Loaded ${animes.length} schedules from LiveChart (${scheduleByMalId.size} by MAL ID)`, 'success');
+    return { scheduleByMalId, scheduleByAnilistId };
+    
+  } catch (err) {
+    log(`LiveChart error: ${err.message}, will use Jikan fallback`, 'warning');
+    return null;
+  }
+}
 
 // ========== SEASON DETECTION ==========
 
@@ -1116,6 +1193,115 @@ async function runMetadataEnrichment(catalogData) {
   return { posterOverrides, metadataOverrides };
 }
 
+/**
+ * Enrich broadcast schedules for ongoing anime using LiveChart as primary source
+ * Falls back to Jikan API for anime not found in LiveChart
+ */
+async function runBroadcastEnrichment(catalogData) {
+  console.log('\n📺 Enriching broadcast schedules (LiveChart + Jikan fallback)...\n');
+  
+  const ongoingAnime = catalogData.catalog.filter(a => a.status === 'ONGOING');
+  
+  if (ongoingAnime.length === 0) {
+    log('No ongoing anime found, skipping broadcast enrichment', 'info');
+    return { total: 0, enriched: 0, fromLiveChart: 0, fromJikan: 0 };
+  }
+  
+  log(`Found ${ongoingAnime.length} ongoing anime to check`);
+  
+  // Try LiveChart first (faster and more accurate)
+  const liveChartData = await fetchLiveChartSchedules();
+  
+  let enriched = 0;
+  let fromLiveChart = 0;
+  let fromJikan = 0;
+  let unchanged = 0;
+  
+  for (let i = 0; i < ongoingAnime.length; i++) {
+    const anime = ongoingAnime[i];
+    let found = false;
+    let newDay = null;
+    
+    // Try LiveChart first (by MAL ID or AniList ID)
+    if (liveChartData) {
+      let schedule = null;
+      if (anime.mal_id && liveChartData.scheduleByMalId.has(anime.mal_id)) {
+        schedule = liveChartData.scheduleByMalId.get(anime.mal_id);
+      } else if (anime.anilist_id && liveChartData.scheduleByAnilistId.has(anime.anilist_id)) {
+        schedule = liveChartData.scheduleByAnilistId.get(anime.anilist_id);
+      }
+      
+      if (schedule && schedule.day) {
+        newDay = schedule.day;
+        found = true;
+        
+        if (!anime.broadcastDay || anime.broadcastDay !== newDay) {
+          const idx = catalogData.catalog.findIndex(a => a.id === anime.id);
+          if (idx !== -1) {
+            catalogData.catalog[idx].broadcastDay = newDay;
+            if (schedule.time) {
+              catalogData.catalog[idx].broadcastTime = schedule.time;
+            }
+          }
+          enriched++;
+          fromLiveChart++;
+        } else {
+          unchanged++;
+        }
+      }
+    }
+    
+    // Fallback to Jikan for remaining anime without schedule
+    if (!found && anime.mal_id && !anime.broadcastDay) {
+      try {
+        const response = await fetchWithRetry(
+          `${CONFIG.api.jikan.baseUrl}/anime/${anime.mal_id}`
+        );
+        
+        if (response && response.ok) {
+          const data = await response.json();
+          const broadcast = data?.data?.broadcast;
+          
+          if (broadcast?.day) {
+            const dayMap = {
+              'mondays': 'Monday', 'tuesdays': 'Tuesday', 'wednesdays': 'Wednesday',
+              'thursdays': 'Thursday', 'fridays': 'Friday', 'saturdays': 'Saturday',
+              'sundays': 'Sunday'
+            };
+            newDay = dayMap[broadcast.day.toLowerCase()] || null;
+            
+            if (newDay) {
+              const idx = catalogData.catalog.findIndex(a => a.id === anime.id);
+              if (idx !== -1) {
+                catalogData.catalog[idx].broadcastDay = newDay;
+                if (broadcast.time) {
+                  catalogData.catalog[idx].broadcastTime = broadcast.time;
+                }
+              }
+              enriched++;
+              fromJikan++;
+            }
+          }
+        }
+        
+        await sleep(CONFIG.api.jikan.rateLimit);
+      } catch (err) {
+        log(`Failed to get broadcast for ${anime.name}: ${err.message}`, 'debug');
+      }
+    }
+    
+    if ((i + 1) % 20 === 0 || i === ongoingAnime.length - 1) {
+      process.stdout.write(`\r  Processing ${i + 1}/${ongoingAnime.length} - LiveChart: ${fromLiveChart}, Jikan: ${fromJikan}, Unchanged: ${unchanged}`);
+    }
+  }
+  
+  console.log('\n');
+  log(`Broadcast enrichment complete: ${enriched} updated`, 'success');
+  log(`  From LiveChart: ${fromLiveChart} | From Jikan: ${fromJikan} | Already correct: ${unchanged}`, 'info');
+  
+  return { total: ongoingAnime.length, enriched, fromLiveChart, fromJikan };
+}
+
 async function runNewAnimeDiscovery(catalogData) {
   console.log('\n🆕 Discovering new anime...\n');
   
@@ -1223,6 +1409,7 @@ async function main() {
     qualityControl: null,
     nonAnimeDetection: null,
     enrichment: null,
+    broadcastEnrichment: null,
     newAnime: null,
     filterOptionsUpdated: false
   };
@@ -1255,7 +1442,12 @@ async function main() {
       results.enrichment = await runMetadataEnrichment(catalogData);
     }
     
-    // 5. Update filter options (ALWAYS run - keeps counts accurate)
+    // 5. Broadcast Schedule Enrichment (LiveChart primary, Jikan fallback)
+    if (!QUALITY_CONTROL_ONLY && !NEW_ANIME_ONLY) {
+      results.broadcastEnrichment = await runBroadcastEnrichment(catalogData);
+    }
+    
+    // 6. Update filter options (ALWAYS run - keeps counts accurate)
     console.log('\n📊 Updating filter options...\n');
     const updatedFilters = updateFilterOptions(catalogData.catalog, filterOptions);
     saveFilterOptions(updatedFilters);
@@ -1301,6 +1493,14 @@ async function main() {
       console.log('\n  Generated override code:');
       console.log(generateOverrideCode(results.enrichment.posterOverrides, results.enrichment.metadataOverrides));
     }
+  }
+  
+  if (results.broadcastEnrichment) {
+    console.log(`\n  Broadcast Enrichment:`);
+    console.log(`    - Total ongoing: ${results.broadcastEnrichment.total}`);
+    console.log(`    - Updated: ${results.broadcastEnrichment.enriched}`);
+    console.log(`    - From LiveChart: ${results.broadcastEnrichment.fromLiveChart}`);
+    console.log(`    - From Jikan: ${results.broadcastEnrichment.fromJikan}`);
   }
   
   if (results.filterOptionsUpdated) {
