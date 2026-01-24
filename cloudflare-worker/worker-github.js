@@ -1133,7 +1133,7 @@ const CONFIGURE_HTML = `<!doctype html>
     </div>
 
     <div style="text-align:center;margin-top:24px;color:var(--muted);font-size:13px">
-      AnimeStream v1.3.0 • 7,000+ anime • RAW + Debrid + Soft Subtitles
+      AnimeStream v1.3.3 • 7,000+ anime • RAW + Debrid + Soft Subtitles
     </div>
   </div>
 
@@ -4394,7 +4394,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null, selec
 
   return {
     id: 'community.animestream',
-    version: '1.3.1',
+    version: '1.3.3',
     name: 'AnimeStream',
     description: 'All your favorite Anime series and movies with filtering by genre, seasonal releases, currently airing and ratings. Stream both SUB and DUB options via AllAnime.',
     // CRITICAL: Use explicit resource objects with types and idPrefixes
