@@ -1303,9 +1303,13 @@ async function runBroadcastEnrichment(catalogData) {
 }
 
 async function runNewAnimeDiscovery(catalogData) {
+  // Original function - fetches its own data
+  const airingAnime = await fetchNewAnimeFromJikan();
+  return runNewAnimeDiscoveryWithData(catalogData, airingAnime);
+}
+
+async function runNewAnimeDiscoveryWithData(catalogData, newAnimeFromJikan) {
   console.log('\n🆕 Discovering new anime...\n');
-  
-  const newAnimeFromJikan = await fetchNewAnimeFromJikan();
   
   // Find anime not in our catalog
   const existingMalIds = new Set(
@@ -1335,6 +1339,220 @@ async function runNewAnimeDiscovery(catalogData) {
   log(`Found ${newAnime.length} new anime to add`, 'success');
   
   return newAnime;
+}
+
+// ========== PARENT SERIES STATUS UPDATE ==========
+
+/**
+ * Manual mapping of season MAL IDs to their parent series MAL ID
+ * When a season is airing, the parent series should be marked ONGOING
+ * This complements the automatic title matching below
+ */
+const MAL_SEASON_TO_PARENT_MAL = {
+  // Fire Force (parent MAL: 38671)
+  40956: 38671,   // Season 2
+  51818: 38671,   // Season 3
+  59229: 38671,   // Season 3 Part 2
+  
+  // Jujutsu Kaisen (parent MAL: 40748... wait, catalog uses 38777)
+  // Actually parent should be first entry, which is 40748
+  48561: 40748,   // Season 2
+  51009: 40748,   // Season 2 Part 2
+  57658: 40748,   // Season 3 (Culling Game Part 1)
+  
+  // My Hero Academia (parent MAL: 31964)
+  33486: 31964,   // Season 2
+  36456: 31964,   // Season 3
+  38408: 31964,   // Season 4
+  48418: 31964,   // Season 5
+  52168: 31964,   // Season 6
+  58951: 31964,   // Season 7
+  
+  // Demon Slayer (parent MAL: 38000)
+  47778: 38000,   // Entertainment District Arc
+  51019: 38000,   // Swordsmith Village Arc
+  57884: 38000,   // Hashira Training Arc
+  59532: 38000,   // Infinity Castle Arc
+  
+  // Solo Leveling (parent MAL: 52299)
+  59693: 52299,   // Season 2
+  
+  // Re:Zero (parent MAL: 31240)
+  39587: 31240,   // Season 2
+  42203: 31240,   // Season 2 Part 2
+  54857: 31240,   // Season 3
+  59355: 31240,   // Season 3 Part 2
+  
+  // Mushoku Tensei (parent MAL: 39535)
+  45576: 39535,   // Part 2
+  51179: 39535,   // Season 2
+  55888: 39535,   // Season 2 Part 2
+  62574: 39535,   // Season 3
+  
+  // Blue Lock (parent MAL: 49596)
+  54865: 49596,   // Season 2
+  
+  // Oshi no Ko (parent MAL: 52034)
+  55791: 52034,   // Season 2
+  
+  // Frieren (parent MAL: 52991)
+  59978: 52991,   // Season 2
+  
+  // Dan Da Dan (parent MAL: 57334)
+  60807: 57334,   // Season 2
+  
+  // Spy x Family (parent MAL: 50265)
+  52578: 50265,   // Part 2
+  53887: 50265,   // Season 2
+  55556: 50265,   // Code: White (movie, but related)
+  
+  // Vinland Saga (parent MAL: 37521)
+  49387: 37521,   // Season 2
+  
+  // Classroom of the Elite (parent MAL: 35507)
+  51096: 35507,   // Season 2
+  51180: 35507,   // Season 3
+  
+  // Mob Psycho 100 (parent MAL: 32182)
+  37510: 32182,   // Season 2
+  50172: 32182,   // Season 3
+};
+
+/**
+ * Update parent series status when a new season is airing
+ * This ensures Fire Force shows as "Currently Airing" when S3 is broadcasting
+ */
+async function updateParentSeriesStatus(catalogData, airingAnime) {
+  console.log('\n📊 Updating parent series airing status...\n');
+  
+  let updated = 0;
+  const updatedParents = [];
+  
+  for (const jikanAnime of airingAnime) {
+    const seasonMalId = jikanAnime.mal_id;
+    const parentMalId = MAL_SEASON_TO_PARENT_MAL[seasonMalId];
+    
+    if (parentMalId) {
+      // Find parent in catalog
+      const parentIdx = catalogData.catalog.findIndex(a => 
+        a.mal_id === parentMalId || a.mal_id === String(parentMalId)
+      );
+      
+      if (parentIdx !== -1) {
+        const parent = catalogData.catalog[parentIdx];
+        const wasOngoing = parent.status === 'ONGOING';
+        
+        // Update parent status to ONGOING
+        catalogData.catalog[parentIdx].status = 'ONGOING';
+        
+        // Copy broadcast day from airing season
+        let broadcastDay = null;
+        if (jikanAnime.broadcast?.day) {
+          const dayMap = {
+            'mondays': 'Monday', 'tuesdays': 'Tuesday', 'wednesdays': 'Wednesday',
+            'thursdays': 'Thursday', 'fridays': 'Friday', 'saturdays': 'Saturday',
+            'sundays': 'Sunday'
+          };
+          broadcastDay = dayMap[jikanAnime.broadcast.day.toLowerCase()] || null;
+        }
+        
+        if (broadcastDay) {
+          catalogData.catalog[parentIdx].broadcastDay = broadcastDay;
+        }
+        
+        if (!wasOngoing) {
+          updated++;
+          updatedParents.push({
+            name: parent.name,
+            seasonName: jikanAnime.title,
+            broadcastDay
+          });
+          log(`Updated: ${parent.name} → ONGOING (from ${jikanAnime.title}, ${broadcastDay || 'no day'})`, 'success');
+        }
+      }
+    }
+  }
+  
+  // Also try title-based matching for unmapped seasons
+  const catalogByCleanTitle = new Map();
+  for (let i = 0; i < catalogData.catalog.length; i++) {
+    const anime = catalogData.catalog[i];
+    const cleanTitle = cleanSeasonTitle(anime.name);
+    if (cleanTitle && cleanTitle.length > 3) {
+      if (!catalogByCleanTitle.has(cleanTitle)) {
+        catalogByCleanTitle.set(cleanTitle, []);
+      }
+      catalogByCleanTitle.get(cleanTitle).push(i);
+    }
+  }
+  
+  for (const jikanAnime of airingAnime) {
+    // Skip if already handled by MAL mapping
+    if (MAL_SEASON_TO_PARENT_MAL[jikanAnime.mal_id]) continue;
+    
+    const cleanTitle = cleanSeasonTitle(jikanAnime.title);
+    if (!cleanTitle || cleanTitle.length <= 3) continue;
+    
+    // Find potential parent by clean title
+    const matches = catalogByCleanTitle.get(cleanTitle);
+    if (matches && matches.length > 0) {
+      // Find the earliest entry (likely the parent)
+      const parentIdx = matches.reduce((best, idx) => {
+        const a = catalogData.catalog[idx];
+        const b = catalogData.catalog[best];
+        return (a.year || 9999) < (b.year || 9999) ? idx : best;
+      }, matches[0]);
+      
+      const parent = catalogData.catalog[parentIdx];
+      
+      // Only update if parent is FINISHED and the airing anime is a sequel
+      if (parent.status === 'FINISHED' && jikanAnime.title !== parent.name) {
+        // Check if this looks like a sequel (has Season/Part/etc in name)
+        const isSequel = /season|part|cour|2nd|3rd|4th|5th|6th|7th|final/i.test(jikanAnime.title);
+        
+        if (isSequel) {
+          catalogData.catalog[parentIdx].status = 'ONGOING';
+          
+          let broadcastDay = null;
+          if (jikanAnime.broadcast?.day) {
+            const dayMap = {
+              'mondays': 'Monday', 'tuesdays': 'Tuesday', 'wednesdays': 'Wednesday',
+              'thursdays': 'Thursday', 'fridays': 'Friday', 'saturdays': 'Saturday',
+              'sundays': 'Sunday'
+            };
+            broadcastDay = dayMap[jikanAnime.broadcast.day.toLowerCase()] || null;
+          }
+          
+          if (broadcastDay) {
+            catalogData.catalog[parentIdx].broadcastDay = broadcastDay;
+          }
+          
+          updated++;
+          log(`Updated (title match): ${parent.name} → ONGOING (from ${jikanAnime.title})`, 'success');
+        }
+      }
+    }
+  }
+  
+  log(`Updated ${updated} parent series to ONGOING`, 'success');
+  return { updated, parents: updatedParents };
+}
+
+/**
+ * Clean title for matching - removes season/part suffixes
+ */
+function cleanSeasonTitle(title) {
+  if (!title) return '';
+  return title
+    .replace(/:\s*(?:Season|Part|Cour)\s*\d+/gi, '')
+    .replace(/:\s*The\s+Final\s+Season/gi, '')
+    .replace(/:\s*Final\s+Season/gi, '')
+    .replace(/\s+(?:Season|Part|Cour)\s*\d+/gi, '')
+    .replace(/\s+\d+(?:st|nd|rd|th)\s+Season/gi, '')
+    .replace(/\s+[IVX]+$/gi, '')
+    .replace(/\s+\d+$/gi, '')
+    .trim()
+    .toLowerCase();
 }
 
 // ========== WORKER FILE UPDATE ==========
@@ -1411,6 +1629,7 @@ async function main() {
     enrichment: null,
     broadcastEnrichment: null,
     newAnime: null,
+    parentStatusUpdates: null,
     filterOptionsUpdated: false
   };
   
@@ -1423,13 +1642,20 @@ async function main() {
     
     // 2. New Anime Discovery
     if (!QUALITY_CONTROL_ONLY && !ENRICH_ONLY) {
-      results.newAnime = await runNewAnimeDiscovery(catalogData);
+      // Fetch airing anime once (used for new anime + parent status updates)
+      const airingAnime = await fetchNewAnimeFromJikan();
+      
+      // 2a. Add genuinely new anime
+      results.newAnime = await runNewAnimeDiscoveryWithData(catalogData, airingAnime);
       
       // Add new anime to catalog
       if (results.newAnime && results.newAnime.length > 0) {
         catalogData.catalog.push(...results.newAnime);
         catalogData.totalCount = catalogData.catalog.length;
       }
+      
+      // 2b. Update parent series status when seasons are airing
+      results.parentStatusUpdates = await updateParentSeriesStatus(catalogData, airingAnime);
     }
     
     // 3. Non-Anime Detection (run on new entries)
@@ -1476,6 +1702,19 @@ async function main() {
   if (results.newAnime) {
     console.log(`\n  New Anime:`);
     console.log(`    - Added: ${results.newAnime.length}`);
+  }
+  
+  if (results.parentStatusUpdates) {
+    console.log(`\n  Parent Series Status:`);
+    console.log(`    - Updated to ONGOING: ${results.parentStatusUpdates.updated}`);
+    if (results.parentStatusUpdates.parents.length > 0) {
+      for (const p of results.parentStatusUpdates.parents.slice(0, 5)) {
+        console.log(`      • ${p.name} (${p.broadcastDay || 'no day'})`);
+      }
+      if (results.parentStatusUpdates.parents.length > 5) {
+        console.log(`      ... and ${results.parentStatusUpdates.parents.length - 5} more`);
+      }
+    }
   }
   
   if (results.nonAnimeDetection) {

@@ -963,6 +963,14 @@ const CONFIGURE_HTML = `<!doctype html>
   .mode-btn.active:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
   @keyframes greenPulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
   .control.highlight-new{animation:greenPulse 1.5s ease 3;border-color:rgba(34,197,94,.5)}
+  /* Tab Navigation */
+  .tab-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+  .tab-btn{background:var(--box);border:2px solid transparent;border-radius:16px;padding:14px 18px;cursor:pointer;color:var(--fg);font-weight:600;transition:all .2s ease;text-align:center}
+  .tab-btn:hover{border-color:rgba(57,38,166,.3)}
+  .tab-btn.active{background:var(--primary);border-color:var(--primary)}
+  .tab-btn.active:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
 </style>
 </head>
 <body>
@@ -971,6 +979,14 @@ const CONFIGURE_HTML = `<!doctype html>
       <h1>AnimeStream</h1>
       <p class="subtle">Configure your anime addon settings</p>
 
+      <!-- Tab Navigation -->
+      <div class="tab-nav">
+        <button id="tabCatalog" class="tab-btn active" type="button">Catalog Config</button>
+        <button id="tabStreaming" class="tab-btn" type="button">Streaming Config</button>
+      </div>
+
+      <!-- CATALOG CONFIG TAB -->
+      <div id="catalogConfigTab" class="tab-content active">
       <div class="stack">
         <div>
           <div class="section-title">Display Settings</div>
@@ -1030,6 +1046,16 @@ const CONFIGURE_HTML = `<!doctype html>
           <div id="catalogPills" class="pill-grid"></div>
         </div>
 
+        <div>
+          <div class="section-title">Database Stats</div>
+          <div id="stats"><span class="stat" id="statTotal">Loading...</span></div>
+        </div>
+      </div>
+      </div>
+
+      <!-- STREAMING CONFIG TAB -->
+      <div id="streamingConfigTab" class="tab-content">
+      <div class="stack">
         <div>
           <div class="section-title">Stream Mode</div>
           
@@ -1107,9 +1133,11 @@ const CONFIGURE_HTML = `<!doctype html>
         </div>
 
         <div>
-          <div class="section-title">Database Stats</div>
-          <div id="stats"><span class="stat" id="statTotal">Loading...</span></div>
+          <div class="section-title">Rating Posters (RPDB)</div>
+          <div class="help" style="margin-bottom:12px">Display ratings on posters. Get your API key from <a href="https://ratingposterdb.com/" target="_blank" rel="noopener" style="color:#c9a0ff">ratingposterdb.com</a> ($2/month). Leave empty for standard posters.</div>
+          <input id="rpdbApiKey" type="password" class="control" placeholder="Your RPDB API key (optional)" style="width:100%" />
         </div>
+      </div>
       </div>
 
       <div class="buttons">
@@ -1154,10 +1182,12 @@ const CONFIGURE_HTML = `<!doctype html>
       debridProvider: '',
       debridApiKey: '',
       debridValidated: false,
-      // Torrent preferences
-      torrentPrefs: [], // e.g. ['q_1080', 'q_720', 'a_sub', 'n_3']
+      // Torrent preferences (defaults: 4K, 1080p, DUAL audio, 3 per quality)
+      torrentPrefs: ['q_4k', 'q_1080', 'a_dual', 'n_3'],
       // Subtitle settings
       subdlApiKey: '',
+      // RPDB rating posters
+      rpdbApiKey: '',
       // User lists from connected accounts
       anilistLists: [],
       malLists: []
@@ -1182,6 +1212,7 @@ const CONFIGURE_HTML = `<!doctype html>
         if (key === 'dp' && value) state.debridProvider = value;
         if (key === 'dk' && value) state.debridApiKey = decodeURIComponent(value);
         if (key === 'sk' && value) state.subdlApiKey = decodeURIComponent(value);
+        if (key === 'rp' && value) state.rpdbApiKey = decodeURIComponent(value);
         if (key === 'tp' && value) state.torrentPrefs = value.split(',');
       });
       persist();
@@ -1214,6 +1245,15 @@ const CONFIGURE_HTML = `<!doctype html>
     // SubDL element
     const subdlApiKeyEl = $('#subdlApiKey');
     
+    // RPDB element
+    const rpdbApiKeyEl = $('#rpdbApiKey');
+    
+    // Tab elements
+    const tabCatalogBtn = $('#tabCatalog');
+    const tabStreamingBtn = $('#tabStreaming');
+    const catalogConfigTab = $('#catalogConfigTab');
+    const streamingConfigTab = $('#streamingConfigTab');
+    
     // Stream mode buttons
     const modeHttpsBtn = $('#modeHttps');
     const modeTorrentsBtn = $('#modeTorrents');
@@ -1239,6 +1279,27 @@ const CONFIGURE_HTML = `<!doctype html>
     
     // Initialize SubDL settings
     if (subdlApiKeyEl) subdlApiKeyEl.value = state.subdlApiKey || '';
+    
+    // Initialize RPDB settings
+    if (rpdbApiKeyEl) rpdbApiKeyEl.value = state.rpdbApiKey || '';
+    
+    // ===== TAB SWITCHING =====
+    function switchTab(tab) {
+      if (tab === 'catalog') {
+        tabCatalogBtn.classList.add('active');
+        tabStreamingBtn.classList.remove('active');
+        catalogConfigTab.classList.add('active');
+        streamingConfigTab.classList.remove('active');
+      } else {
+        tabCatalogBtn.classList.remove('active');
+        tabStreamingBtn.classList.add('active');
+        catalogConfigTab.classList.remove('active');
+        streamingConfigTab.classList.add('active');
+      }
+    }
+    
+    tabCatalogBtn.onclick = () => switchTab('catalog');
+    tabStreamingBtn.onclick = () => switchTab('streaming');
     
     function showToast(msg, isError) {
       toast.textContent = msg;
@@ -1401,6 +1462,10 @@ const CONFIGURE_HTML = `<!doctype html>
         
         if (!state.torrentPrefs) state.torrentPrefs = [];
         if (!state.torrentPrefs.includes(val)) {
+          // Count options (n_*) are mutually exclusive - remove any existing count option
+          if (val.startsWith('n_')) {
+            state.torrentPrefs = state.torrentPrefs.filter(p => !p.startsWith('n_'));
+          }
           state.torrentPrefs.push(val);
           persist();
           renderTorrentPrefsPills();
@@ -1413,7 +1478,7 @@ const CONFIGURE_HTML = `<!doctype html>
     
     if (torrentPrefsClearBtn) {
       torrentPrefsClearBtn.onclick = () => {
-        state.torrentPrefs = [];
+        state.torrentPrefs = ['q_4k', 'q_1080', 'a_dual', 'n_3']; // Reset to defaults
         persist();
         renderTorrentPrefsPills();
         rerender();
@@ -1929,6 +1994,16 @@ const CONFIGURE_HTML = `<!doctype html>
       subdlApiKeyEl.onblur = subdlApiKeyEl.onchange;
     }
     
+    // RPDB API key handler
+    if (rpdbApiKeyEl) {
+      rpdbApiKeyEl.onchange = () => {
+        state.rpdbApiKey = rpdbApiKeyEl.value.trim();
+        persist();
+        rerender();
+      };
+      rpdbApiKeyEl.onblur = rpdbApiKeyEl.onchange;
+    }
+    
     function buildConfigPath() {
       const parts = [];
       if (!state.showCounts) parts.push('showCounts=0');
@@ -1949,6 +2024,8 @@ const CONFIGURE_HTML = `<!doctype html>
       }
       // SubDL API key
       if (state.subdlApiKey) parts.push('sk=' + encodeURIComponent(state.subdlApiKey));
+      // RPDB API key
+      if (state.rpdbApiKey) parts.push('rp=' + encodeURIComponent(state.rpdbApiKey));
       // Torrent preferences (only if any are set)
       if (state.torrentPrefs && state.torrentPrefs.length > 0) parts.push('tp=' + state.torrentPrefs.join(','));
       // Use | as separator (Stremio standard) instead of & (URL query string style)
@@ -2340,6 +2417,108 @@ function convertToAbsoluteEpisode(imdbId, season, episode) {
   }
   
   return absoluteEpisode;
+}
+
+// Cache for dynamically calculated episode mappings from Cinemeta
+const dynamicEpisodeMappingCache = new Map();
+
+/**
+ * Calculate absolute episode from Cinemeta's videos array
+ * This is used for merged anime that don't have hardcoded mappings
+ * 
+ * Cinemeta videos array contains objects like:
+ * { season: 1, episode: 1, id: "..." }, { season: 1, episode: 2, id: "..." }, etc.
+ * 
+ * We count episodes in previous seasons to get the absolute number
+ */
+function calculateAbsoluteFromCinemeta(videos, targetSeason, targetEpisode) {
+  if (!videos || videos.length === 0) return targetEpisode;
+  
+  // Build season episode counts from videos
+  const seasonEpisodeCounts = new Map();
+  
+  for (const video of videos) {
+    const season = video.season || 1;
+    const episode = video.episode || video.number || 1;
+    const currentMax = seasonEpisodeCounts.get(season) || 0;
+    seasonEpisodeCounts.set(season, Math.max(currentMax, episode));
+  }
+  
+  // Calculate absolute episode: sum of all episodes in previous seasons + current episode
+  let absoluteEpisode = targetEpisode;
+  
+  for (let s = 1; s < targetSeason; s++) {
+    const episodesInSeason = seasonEpisodeCounts.get(s) || 0;
+    absoluteEpisode += episodesInSeason;
+  }
+  
+  return absoluteEpisode;
+}
+
+/**
+ * Convert to absolute episode with dynamic Cinemeta fallback
+ * Used when anime has _mergedSeasons but no hardcoded mapping
+ * 
+ * @param {string} imdbId - IMDB ID
+ * @param {number} season - Stremio season number  
+ * @param {number} episode - Stremio episode number
+ * @param {Object} anime - Anime object from catalog (may have _mergedSeasons)
+ * @returns {Promise<number>} Absolute episode number
+ */
+async function convertToAbsoluteEpisodeWithFallback(imdbId, season, episode, anime) {
+  // ONLY use hardcoded mappings for specific shows we know need conversion
+  // This is for AllAnime API calls where we need absolute episode numbers
+  const mapping = EPISODE_SEASON_MAPPINGS[imdbId];
+  if (mapping) {
+    return convertToAbsoluteEpisode(imdbId, season, episode);
+  }
+  
+  // For all other shows, use the original episode number for AllAnime
+  return episode;
+}
+
+/**
+ * Calculate absolute episode for TORRENT SEARCHING only
+ * Long-running shows like One Piece, Naruto use absolute episode numbers on torrent sites
+ * This is separate from AllAnime episode handling
+ */
+async function calculateAbsoluteEpisodeForTorrents(imdbId, season, episode) {
+  // Season 1 is always the same
+  if (season <= 1) {
+    return episode;
+  }
+  
+  // Check cache first
+  const cacheKey = `torrent:${imdbId}:${season}:${episode}`;
+  if (dynamicEpisodeMappingCache.has(cacheKey)) {
+    return dynamicEpisodeMappingCache.get(cacheKey);
+  }
+  
+  try {
+    const cinemeta = await fetchCinemetaMeta(imdbId, 'series');
+    
+    if (cinemeta?.videos && cinemeta.videos.length > 0) {
+      const absoluteEpisode = calculateAbsoluteFromCinemeta(cinemeta.videos, season, episode);
+      
+      // Only cache if it's actually different (saves memory)
+      if (absoluteEpisode !== episode) {
+        console.log(`[Torrent] Calculated absolute episode from Cinemeta: S${season}E${episode} → E${absoluteEpisode}`);
+        
+        // Cache the result (max 1000 entries)
+        if (dynamicEpisodeMappingCache.size > 1000) {
+          const firstKey = dynamicEpisodeMappingCache.keys().next().value;
+          dynamicEpisodeMappingCache.delete(firstKey);
+        }
+        dynamicEpisodeMappingCache.set(cacheKey, absoluteEpisode);
+      }
+      
+      return absoluteEpisode;
+    }
+  } catch (err) {
+    console.log(`[Torrent] Failed to fetch Cinemeta for absolute calculation: ${err.message}`);
+  }
+  
+  return episode;
 }
 
 // Check if URL is a direct video stream
@@ -2919,18 +3098,50 @@ const HIDDEN_DUPLICATE_ENTRIES = new Set([
 // Map standalone season entries to their parent series ID
 // When a season is ONGOING, the parent series should appear in Currently Airing
 const SEASON_TO_PARENT_MAP = {
+  // Jujutsu Kaisen (tt12343534)
   'mal-57658': 'tt12343534',    // JJK: The Culling Game Part 1 → Jujutsu Kaisen
   'tt36956670': 'tt12343534',   // JJK: Hidden Inventory → Jujutsu Kaisen
   'tt14331144': 'tt12343534',   // JJK 0 → Jujutsu Kaisen
+  
+  // Frieren (tt22248376)
   'mal-59978': 'tt22248376',    // Frieren 2nd Season → Frieren: Beyond Journey's End
-  // Add more mappings as needed
+  
+  // Fire Force / Enen no Shouboutai (tt9308694)
+  'mal-51818': 'tt9308694',     // Fire Force Season 3 → Fire Force
+  'mal-59229': 'tt9308694',     // Fire Force Season 3 Part 2 → Fire Force
+  'mal-40956': 'tt9308694',     // Fire Force Season 2 → Fire Force
+  
+  // Demon Slayer (tt9335498)
+  'mal-59532': 'tt9335498',     // Infinity Castle Arc → Demon Slayer
+  
+  // My Hero Academia (tt5626028)
+  'mal-58951': 'tt5626028',     // Season 7 → MHA
+  
+  // Solo Leveling (tt21209876)
+  'mal-59693': 'tt21209876',    // Season 2 → Solo Leveling
+  
+  // Re:Zero (tt4940456)
+  'mal-54857': 'tt4940456',     // Season 3 → Re:Zero
+  'mal-59355': 'tt4940456',     // Season 3 Part 2 → Re:Zero
+  
+  // Mushoku Tensei (tt13293588)
+  'mal-62574': 'tt13293588',    // Season 3 → Mushoku Tensei
+  
+  // Dan Da Dan (tt27995594)
+  'mal-60807': 'tt27995594',    // Season 2 → Dan Da Dan
 };
 
 // Reverse map: parent ID → list of season IDs (for stream checking)
 const PARENT_TO_SEASONS_MAP = {
   'tt12343534': ['mal-57658', 'tt36956670', 'tt14331144'],  // JJK seasons
   'tt22248376': ['mal-59978'],  // Frieren seasons
-  // Add more mappings as needed
+  'tt9308694': ['mal-51818', 'mal-59229', 'mal-40956'],  // Fire Force seasons
+  'tt9335498': ['mal-59532'],  // Demon Slayer seasons
+  'tt5626028': ['mal-58951'],  // MHA seasons
+  'tt21209876': ['mal-59693'],  // Solo Leveling seasons
+  'tt4940456': ['mal-54857', 'mal-59355'],  // Re:Zero seasons
+  'tt13293588': ['mal-62574'],  // Mushoku Tensei seasons
+  'tt27995594': ['mal-60807'],  // Dan Da Dan seasons
 };
 
 // Map parent ID → which season number is currently airing
@@ -2938,7 +3149,10 @@ const PARENT_TO_SEASONS_MAP = {
 const PARENT_ONGOING_SEASON = {
   'tt12343534': 3,  // JJK Season 3 (The Culling Game) is currently airing
   'tt22248376': 2,  // Frieren Season 2 is currently airing
-  // Add more as needed
+  'tt9308694': 3,   // Fire Force Season 3 is currently airing
+  'tt21209876': 2,  // Solo Leveling Season 2 is currently airing
+  'tt4940456': 3,   // Re:Zero Season 3 is currently airing
+  'tt27995594': 2,  // Dan Da Dan Season 2 is currently airing
 };
 
 // Get all parent IDs that have an ongoing season
@@ -3124,7 +3338,8 @@ const POSTER_OVERRIDES = {
   'tt38268282': 'https://media.kitsu.app/anime/49847/poster_image/large-f9a0fe19d2d2647e295046f779bc2e97.jpeg', // Steel Ball Run: JoJo's Bizarre Adventure
   'tt36294552': 'https://media.kitsu.app/anime/47243/poster_image/large-5f135e0ade6ef5b784e4ddf0342c3330.jpeg', // Trigun Stargaze
   'tt37532731': 'https://media.kitsu.app/anime/49372/poster_image/large-13c34534bcbb483eff2e4bd8c6124430.jpeg', // You and I are Polar Opposites
-  'tt36592708': 'https://media.kitsu.app/anime/48198/poster_image/large-b8e67c6a35c2a5e94b5c0b82e0f5a3c7.jpeg', // There's No Freaking Way I'll be Your Lover!
+  'tt36592708': 'https://media.kitsu.app/anime/48198/poster_image/large-b8e67c6a35c2a5e94b5c0b82e0f5a3c7.jpeg', // There's No Freaking Way I'll be Your Lover! (S1)
+  'tt39254742': 'https://media.kitsu.app/anime/50180/poster_image/large-7b7ec122dbdf5f2fd845648a1a207a2a.jpeg', // There's No Freaking Way ~Next Shine~ (S2)
   
   // === LEGACY POSTER OVERRIDES ===
   'tt38691315': 'https://media.kitsu.app/anime/50202/poster_image/large-b0a51e52146b1d81d8d0924b5a8bbe82.jpeg', // Style of Hiroshi Nohara Lunch - imdb_v5_medium
@@ -3140,6 +3355,26 @@ const POSTER_OVERRIDES = {
   'tt39050141': 'https://media.kitsu.app/anime/50371/poster_image/large-e9aaad3342085603c1e3d2667a5954ab.jpeg', // Love Through A Prism
   'tt32482998': 'https://media.kitsu.app/anime/50431/poster_image/large-22e1364623ae07665ab286bdbad6d02c.jpeg', // Duel Masters LOST
 };
+
+/**
+ * Apply RPDB rating posters when user has an API key
+ * RPDB overlays ratings on posters - looks great in Stremio
+ * @param {Object} meta - Formatted anime meta with poster
+ * @param {string} rpdbApiKey - User's RPDB API key
+ * @returns {Object} Meta with poster potentially replaced by RPDB version
+ */
+function applyRpdbPoster(meta, rpdbApiKey) {
+  if (!rpdbApiKey || !meta || !meta.id) return meta;
+  
+  // RPDB only works with IMDB IDs
+  if (!meta.id.startsWith('tt')) return meta;
+  
+  // Replace poster with RPDB URL
+  // Format: https://api.ratingposterdb.com/{api_key}/imdb/poster-default/{imdb_id}.jpg
+  meta.poster = `https://api.ratingposterdb.com/${rpdbApiKey}/imdb/poster-default/${meta.id}.jpg`;
+  
+  return meta;
+}
 
 // MAL Season-to-Parent mapping: Manual fallback for edge cases
 // Auto-detection via AniList relations API is tried first (see findParentMalId)
@@ -3864,29 +4099,53 @@ async function handleAniListCatalog(listName, config, catalogData) {
     return [];
   }
   
+  // Validate token format (should be a non-empty string without obvious issues)
+  if (typeof config.anilistToken !== 'string' || config.anilistToken.length < 10) {
+    console.log('[AniList Catalog] Invalid token format');
+    return [];
+  }
+  
   try {
     // Get the user's ID first
     const userQuery = `query { Viewer { id name } }`;
+    console.log('[AniList Catalog] Fetching user info...');
     const userResp = await fetch('https://graphql.anilist.co', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + config.anilistToken
+        'Authorization': 'Bearer ' + config.anilistToken,
+        'Accept': 'application/json'
       },
       body: JSON.stringify({ query: userQuery })
     });
     
     if (!userResp.ok) {
-      console.log('[AniList Catalog] Failed to get user:', userResp.status);
+      console.log('[AniList Catalog] HTTP error getting user:', userResp.status, userResp.statusText);
       return [];
     }
     
     const userData = await userResp.json();
-    const userId = userData?.data?.Viewer?.id;
-    if (!userId) {
-      console.log('[AniList Catalog] No user ID found');
+    
+    // Check for GraphQL errors in response (AniList returns 200 OK with errors array)
+    if (userData?.errors && userData.errors.length > 0) {
+      const errorMessages = userData.errors.map(e => e.message).join(', ');
+      console.log('[AniList Catalog] GraphQL errors:', errorMessages);
+      // Check for common auth errors
+      if (errorMessages.includes('Invalid token') || errorMessages.includes('Unauthorized') || errorMessages.includes('expired')) {
+        console.log('[AniList Catalog] Token appears to be invalid or expired');
+      }
       return [];
     }
+    
+    const userId = userData?.data?.Viewer?.id;
+    const userName = userData?.data?.Viewer?.name;
+    if (!userId) {
+      console.log('[AniList Catalog] No user ID in response - possible auth issue');
+      console.log('[AniList Catalog] Response data:', JSON.stringify(userData).substring(0, 200));
+      return [];
+    }
+    
+    console.log('[AniList Catalog] Authenticated as user:', userName, '(ID:', userId, ')');
     
     // Map standard list names to AniList status
     const statusMap = {
@@ -3926,17 +4185,26 @@ async function handleAniListCatalog(listName, config, catalogData) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + config.anilistToken
+        'Authorization': 'Bearer ' + config.anilistToken,
+        'Accept': 'application/json'
       },
       body: JSON.stringify({ query: listQuery, variables })
     });
     
     if (!listResp.ok) {
-      console.log('[AniList Catalog] Failed to get list:', listResp.status);
+      console.log('[AniList Catalog] HTTP error getting list:', listResp.status, listResp.statusText);
       return [];
     }
     
     const listData = await listResp.json();
+    
+    // Check for GraphQL errors
+    if (listData?.errors && listData.errors.length > 0) {
+      const errorMessages = listData.errors.map(e => e.message).join(', ');
+      console.log('[AniList Catalog] GraphQL errors getting list:', errorMessages);
+      return [];
+    }
+    
     const lists = listData?.data?.MediaListCollection?.lists || [];
     
     // Collect all entries from matching lists
@@ -4064,18 +4332,36 @@ async function handleMalCatalog(listName, config, catalogData) {
     }
     
     // Fetch user's anime list from MAL
+    console.log('[MAL Catalog] Fetching list "' + listName + '" (status: ' + status + ')...');
     const resp = await fetch('https://api.myanimelist.net/v2/users/@me/animelist?status=' + status + '&limit=1000&fields=id,title,main_picture', {
       headers: {
-        'Authorization': 'Bearer ' + config.malToken
+        'Authorization': 'Bearer ' + config.malToken,
+        'Accept': 'application/json'
       }
     });
     
     if (!resp.ok) {
-      console.log('[MAL Catalog] Failed to get list:', resp.status);
+      const statusText = resp.statusText || 'Unknown';
+      console.log('[MAL Catalog] HTTP error getting list:', resp.status, statusText);
+      
+      // Log specific error info for common issues
+      if (resp.status === 401) {
+        console.log('[MAL Catalog] Token appears to be invalid or expired');
+      } else if (resp.status === 403) {
+        console.log('[MAL Catalog] Access forbidden - token may have insufficient permissions');
+      }
+      
       return [];
     }
     
     const data = await resp.json();
+    
+    // Check for error response
+    if (data?.error) {
+      console.log('[MAL Catalog] API error:', data.error, data.message || '');
+      return [];
+    }
+    
     const entries = data?.data || [];
     
     console.log('[MAL Catalog] Found ' + entries.length + ' entries in list "' + listName + '"');
@@ -4394,7 +4680,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null, selec
 
   return {
     id: 'community.animestream',
-    version: '1.3.3',
+    version: '1.4.0',
     name: 'AnimeStream',
     description: 'All your favorite Anime series and movies with filtering by genre, seasonal releases, currently airing and ratings. Stream both SUB and DUB options via AllAnime.',
     // CRITICAL: Use explicit resource objects with types and idPrefixes
@@ -4460,6 +4746,7 @@ function parseConfig(configStr) {
     preferRaw: false,
     subtitleLanguages: ['en', 'ja'],
     subdlApiKey: '',
+    rpdbApiKey: '',
     torrentPrefs: [] // e.g. ['q_1080', 'q_720', 'a_sub', 'n_3']
   };
   
@@ -4517,6 +4804,12 @@ function parseConfig(configStr) {
   const skMatch = decodedConfigStr.match(/\bsk=([^&|]+)/i);
   if (skMatch) {
     config.subdlApiKey = decodeURIComponent(skMatch[1]);
+  }
+  
+  // Pre-extract rp= (RPDB key) - can contain dashes and special chars
+  const rpMatch = decodedConfigStr.match(/\brp=([^&|]+)/i);
+  if (rpMatch) {
+    config.rpdbApiKey = decodeURIComponent(rpMatch[1]);
   }
   
   // Pre-extract tp= (torrent preferences) - comma-separated values like q_1080,a_sub
@@ -4621,6 +4914,7 @@ function parseConfig(configStr) {
       preferRaw: false,
       subtitleLanguages: ['en', 'ja'],
       subdlApiKey: '',
+      rpdbApiKey: '',
       torrentPrefs: []
     };
   }
@@ -4694,6 +4988,106 @@ function findAnimeById(catalog, id) {
 // Legacy function for backwards compatibility
 function findAnimeByImdbId(catalog, imdbId) {
   return findAnimeById(catalog, imdbId);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PART 2 / SPLIT COUR MAPPINGS
+// ═══════════════════════════════════════════════════════════════════════════════
+// Some anime are split into multiple entries on AllAnime (e.g., "Sakamoto Days" + "Sakamoto Days Part 2")
+// while Stremio treats them as one continuous season (S1E1-E22 instead of Part1 E1-11, Part2 E1-11)
+// This mapping tells us when to switch to the Part 2 entry and how to convert the episode number
+// 
+// Format: IMDB_ID: { season: X, splitAfterEpisode: N, part2ShowId: 'allanime_id' }
+// Example: For Sakamoto Days, episode 12 (Stremio) = Part 2 Episode 1 (AllAnime)
+const PART2_MAPPINGS = {
+  // Sakamoto Days (tt27267818) - Part 1: 11 episodes, Part 2 starts at EP12 (Stremio)
+  'tt27267818': {
+    season: 1,
+    splitAfterEpisode: 11,
+    part2ShowId: 'G4FXDA5dFKAYHFe8b', // Sakamoto Days Part 2 on AllAnime
+    part1ShowId: 'CMaX6RtdWhnE7MKTJ', // Sakamoto Days Part 1 on AllAnime
+  },
+  
+  // Attack on Titan Final Season (tt0770828) - Season 4 split into multiple parts
+  // Note: Stremio shows as S4E1-28, but AllAnime has:
+  //   - Final Season (S4 E1-16)
+  //   - Final Season Part 2 (S4 E17-28 = Part2 E1-12)
+  //   - Final Season Part 3 etc.
+  'tt0770828:4': {
+    season: 4,
+    splitAfterEpisode: 16,
+    part2ShowId: 'XRYbKdaQ8mRyH3Gfd', // AoT Final Season Part 2
+    part1ShowId: 'QYXsawBXP4Zg4nYpK', // AoT Final Season Part 1
+    // Additional splits for Part 3
+    additionalSplits: [
+      { splitAfterEpisode: 28, part2ShowId: 'tHmBfq7w8E4dgDYmk' } // Final Season Part 3
+    ]
+  },
+  
+  // Uma Musume: Cinderella Gray (tt32788976) - Part 1: 13 episodes, Part 2 starts at EP14
+  'tt32788976': {
+    season: 1,
+    splitAfterEpisode: 13,
+    part2ShowId: null, // TODO: Find AllAnime ID when Part 2 airs
+    part1ShowId: null, // TODO: Find AllAnime ID
+  },
+};
+
+/**
+ * Get Part 2 mapping for a show if episode falls into Part 2 range
+ * @param {string} imdbId - IMDB ID (with optional :season suffix for multi-season shows)
+ * @param {number} season - Stremio season number
+ * @param {number} episode - Stremio episode number
+ * @returns {{ showId: string, adjustedEpisode: number } | null}
+ */
+function getPart2Mapping(imdbId, season, episode) {
+  // Try exact match first (for season-specific mappings like tt0770828:4)
+  let mapping = PART2_MAPPINGS[`${imdbId}:${season}`];
+  
+  // Fall back to base IMDB ID
+  if (!mapping) {
+    mapping = PART2_MAPPINGS[imdbId];
+  }
+  
+  if (!mapping) return null;
+  
+  // Check if this season matches
+  if (mapping.season !== season) return null;
+  
+  // Check if episode is in Part 2 range
+  if (episode <= mapping.splitAfterEpisode) {
+    // Episode is in Part 1 - return Part 1 show ID if specified
+    if (mapping.part1ShowId) {
+      return { showId: mapping.part1ShowId, adjustedEpisode: episode };
+    }
+    return null; // No special handling needed for Part 1
+  }
+  
+  // Check additional splits (for shows with Part 3, 4, etc.)
+  if (mapping.additionalSplits) {
+    for (let i = mapping.additionalSplits.length - 1; i >= 0; i--) {
+      const split = mapping.additionalSplits[i];
+      if (episode > split.splitAfterEpisode) {
+        const previousSplitEnd = i > 0 
+          ? mapping.additionalSplits[i - 1].splitAfterEpisode 
+          : mapping.splitAfterEpisode;
+        const adjustedEpisode = episode - previousSplitEnd;
+        console.log(`[Part2] Mapped S${season}E${episode} → Part ${i + 3} E${adjustedEpisode}`);
+        return { showId: split.part2ShowId, adjustedEpisode };
+      }
+    }
+  }
+  
+  // Episode is in Part 2 range
+  const adjustedEpisode = episode - mapping.splitAfterEpisode;
+  console.log(`[Part2] Mapped S${season}E${episode} → Part 2 E${adjustedEpisode}`);
+  
+  if (!mapping.part2ShowId) {
+    console.log(`[Part2] Warning: Part 2 show ID not configured for ${imdbId}`);
+    return null;
+  }
+  
+  return { showId: mapping.part2ShowId, adjustedEpisode };
 }
 
 // Direct AllAnime show ID mappings for popular series
@@ -4864,13 +5258,13 @@ async function findAllAnimeShowForSeason(title, season, imdbId = null, malId = n
     'jujutsu kaisen': {
       1: ['Jujutsu Kaisen'],
       2: ['Jujutsu Kaisen Season 2', 'Jujutsu Kaisen 2nd Season'],
-      3: ['Jujutsu Kaisen: The Culling Game', 'Jujutsu Kaisen Season 3', 'Jujutsu Kaisen Culling Game']
+      3: ['Jujutsu Kaisen: The Culling Game', 'Jujutsu Kaisen Season 3', 'Jujutsu Kaisen Culling Game', 'Jujutsu Kaisen Culling Games']
     },
     'attack on titan': {
       1: ['Shingeki no Kyojin'],
       2: ['Shingeki no Kyojin Season 2'],
       3: ['Shingeki no Kyojin Season 3'],
-      4: ['Shingeki no Kyojin: The Final Season', 'Attack on Titan Final Season']
+      4: ['Shingeki no Kyojin: The Final Season', 'Attack on Titan Final Season', 'Shingeki no Kyojin The Final Season']
     },
     'my hero academia': {
       1: ['Boku no Hero Academia'],
@@ -4885,7 +5279,73 @@ async function findAllAnimeShowForSeason(title, season, imdbId = null, malId = n
       1: ['Kimetsu no Yaiba'],
       2: ['Kimetsu no Yaiba: Yuukaku-hen', 'Demon Slayer: Entertainment District Arc'],
       3: ['Kimetsu no Yaiba: Katanakaji no Sato-hen', 'Demon Slayer: Swordsmith Village Arc'],
-      4: ['Kimetsu no Yaiba: Hashira Geiko-hen', 'Demon Slayer: Hashira Training Arc']
+      4: ['Kimetsu no Yaiba: Hashira Geiko-hen', 'Demon Slayer: Hashira Training Arc'],
+      5: ['Kimetsu no Yaiba: Mugen Shiro-hen', 'Demon Slayer: Infinity Castle Arc']
+    },
+    // Fire Force / Enen no Shouboutai (tt9308694)
+    'fire force': {
+      1: ['Enen no Shouboutai', 'Fire Force'],
+      2: ['Enen no Shouboutai: Ni no Shou', 'Fire Force Season 2'],
+      3: ['Enen no Shouboutai: San no Shou', 'Fire Force Season 3', 'Fire Force 3rd Season']
+    },
+    'enen no shouboutai': {
+      1: ['Enen no Shouboutai', 'Fire Force'],
+      2: ['Enen no Shouboutai: Ni no Shou', 'Fire Force Season 2'],
+      3: ['Enen no Shouboutai: San no Shou', 'Fire Force Season 3']
+    },
+    // Sakamoto Days (tt27267818) - Note: Part 2 handling is in PART2_MAPPINGS
+    'sakamoto days': {
+      1: ['Sakamoto Days']
+    },
+    // Blue Lock (tt14602692)
+    'blue lock': {
+      1: ['Blue Lock'],
+      2: ['Blue Lock Season 2', 'Blue Lock VS. U-20 Japan', 'Blue Lock 2nd Season']
+    },
+    // Oshi no Ko (tt21209882)
+    'oshi no ko': {
+      1: ['Oshi no Ko', '[Oshi no Ko]'],
+      2: ['Oshi no Ko Season 2', '[Oshi no Ko] Season 2', 'Oshi no Ko 2nd Season']
+    },
+    // Vinland Saga (tt10233448)
+    'vinland saga': {
+      1: ['Vinland Saga'],
+      2: ['Vinland Saga Season 2']
+    },
+    // Mob Psycho 100 (tt5897304)
+    'mob psycho 100': {
+      1: ['Mob Psycho 100'],
+      2: ['Mob Psycho 100 II'],
+      3: ['Mob Psycho 100 III']
+    },
+    // Classroom of the Elite (tt6819896)
+    'classroom of the elite': {
+      1: ['Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e', 'Classroom of the Elite'],
+      2: ['Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e 2nd Season', 'Classroom of the Elite Season 2'],
+      3: ['Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e 3rd Season', 'Classroom of the Elite Season 3']
+    },
+    // Spy x Family (tt13706018)
+    'spy x family': {
+      1: ['Spy x Family'],
+      2: ['Spy x Family Season 2', 'Spy x Family Part 2'],
+      3: ['Spy x Family Season 3']
+    },
+    // Mushoku Tensei (tt13293588)
+    'mushoku tensei': {
+      1: ['Mushoku Tensei: Isekai Ittara Honki Dasu'],
+      2: ['Mushoku Tensei II: Isekai Ittara Honki Dasu', 'Mushoku Tensei Season 2'],
+      3: ['Mushoku Tensei III: Isekai Ittara Honki Dasu', 'Mushoku Tensei Season 3']
+    },
+    // Re:Zero (tt4940456)
+    're:zero': {
+      1: ['Re:Zero kara Hajimeru Isekai Seikatsu'],
+      2: ['Re:Zero kara Hajimeru Isekai Seikatsu 2nd Season'],
+      3: ['Re:Zero kara Hajimeru Isekai Seikatsu 3rd Season']
+    },
+    'rezero': {
+      1: ['Re:Zero kara Hajimeru Isekai Seikatsu'],
+      2: ['Re:Zero kara Hajimeru Isekai Seikatsu 2nd Season'],
+      3: ['Re:Zero kara Hajimeru Isekai Seikatsu 3rd Season']
     }
   };
   
@@ -5291,9 +5751,13 @@ function extractEpisodeInfo(title) {
   
   // Detect MOVIES
   const moviePatterns = [
-    /\b(?:Movie|Film|Gekijouban|劇場版|Gekijō-ban)\b/i,
+    /\b(?:Movie|Film|Gekijouban|劇場版|Gekijō-ban|Gekijoban)\b/i,
     /\b(?:Mugen\s*Train|Infinity\s*Castle|World\s*Heroes|Two\s*Heroes|Heroes\s*Rising|You'?re\s*Next)\b/i,
-    /\bthe\s*movie\b/i
+    /\bthe\s*movie\b/i,
+    // Common anime movie subtitles (battles, finale, etc.)
+    /\b(?:Final\s*Chapter|The\s*Final|Last\s*Chapter|Dumpster\s*Battle|Kessen)\b/i,
+    // Year-only releases are often movies (e.g., "[Group] Haikyu!! 2024 [1080p]")
+    /^[^\[\]]*\b(20[1-2][0-9])\b[^\[\]]*(?:\[|\(|$)/i
   ];
   
   const isMovie = moviePatterns.some(p => p.test(normalized));
@@ -5994,7 +6458,20 @@ function validateTorrentEpisode(title, requestedEpisode, requestedSeason = 1, co
       // Otherwise, just accept the movie torrent (show match will filter)
       return { matches: true, reason: 'movie_content_match', info };
     }
-    // If user wants movie but torrent is episode, skip
+    
+    // For movie requests: Accept torrents that don't have episode numbers
+    // Anime movie torrents often don't say "Movie" - they're just the title
+    // e.g., "[Group] Haikyu!! The Dumpster Battle [1080p].mkv"
+    if (info.episode === null && !info.isBatch) {
+      return { matches: true, reason: 'movie_no_episode_detected', info };
+    }
+    
+    // Also accept batch torrents for movies (might contain the movie file)
+    if (info.isBatch && !info.season) {
+      return { matches: true, reason: 'movie_batch_accepted', info };
+    }
+    
+    // If torrent clearly has episode numbers (S01E05), reject for movie request
     return { matches: false, reason: 'expected_movie_got_episode', info };
   }
   
@@ -6079,14 +6556,16 @@ function validateTorrentEpisode(title, requestedEpisode, requestedSeason = 1, co
 /**
  * Filter torrents to only include those matching the requested episode AND show
  * @param {Array} torrents - Array of torrent objects with 'title' field
- * @param {number} episode - Requested episode number
+ * @param {number} episode - Requested episode number (absolute for long-running shows)
  * @param {number} season - Requested season number
  * @param {string} animeName - Expected anime name (optional but recommended)
  * @param {Array} synonyms - Alternative names for the anime (optional)
  * @param {number} showMatchThreshold - Minimum score for show match (default: 60)
+ * @param {string} contentTypeHint - Content type hint ('movie', 'special', null)
+ * @param {number} originalEpisode - Original seasonal episode if different from absolute (for dual matching)
  * @returns {Array} Filtered torrents with match info
  */
-function filterTorrentsByEpisode(torrents, episode, season = 1, animeName = null, synonyms = [], showMatchThreshold = 60, contentTypeHint = null) {
+function filterTorrentsByEpisode(torrents, episode, season = 1, animeName = null, synonyms = [], showMatchThreshold = 60, contentTypeHint = null, originalEpisode = null) {
   const filtered = [];
   
   for (const torrent of torrents) {
@@ -6104,7 +6583,19 @@ function filterTorrentsByEpisode(torrents, episode, season = 1, animeName = null
     }
     
     // Then validate the episode/content matches
-    const validation = validateTorrentEpisode(torrent.title, episode, season, contentTypeHint);
+    // For shows with absolute episode conversion, also try matching the original seasonal episode
+    let validation = validateTorrentEpisode(torrent.title, episode, season, contentTypeHint);
+    
+    // If absolute match failed AND we have an original seasonal episode different from absolute,
+    // try matching with the original season+episode (e.g., S5E1 instead of absolute E50)
+    if (!validation.matches && originalEpisode && originalEpisode !== episode) {
+      const seasonalValidation = validateTorrentEpisode(torrent.title, originalEpisode, season, contentTypeHint);
+      if (seasonalValidation.matches) {
+        validation = seasonalValidation;
+        validation.reason = `seasonal_${validation.reason}`; // Mark as seasonal match
+        console.log(`[Episode Filter] Seasonal match: S${season}E${originalEpisode} → ${torrent.title.substring(0, 50)}...`);
+      }
+    }
     
     if (validation.matches) {
       // Add match info to torrent for later use (e.g., batch file selection)
@@ -6194,7 +6685,7 @@ function parseRSSItems(xml) {
  * @param {number} episode - Optional specific episode number
  * @returns {Promise<Array>} Array of torrent objects
  */
-async function scrapeNyaa(animeName, episode = null, season = 1, isMovie = false) {
+async function scrapeNyaa(animeName, episode = null, season = 1, isMovie = false, originalEpisode = null) {
   const cacheKey = isMovie ? `nyaa:movie:${animeName}` : `nyaa:S${season}:${animeName}:${episode || 'all'}`;
   
   // Check cache
@@ -6340,8 +6831,8 @@ async function scrapeNyaa(animeName, episode = null, season = 1, isMovie = false
       console.log(`[Nyaa] Movie validation: ${validatedTorrents.length}/${beforeCount} torrents match movie pattern`);
     } else if (episode) {
       const beforeCount = torrents.length;
-      validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, animeName);
-      console.log(`[Nyaa] Episode validation: ${validatedTorrents.length}/${beforeCount} torrents match E${episode} S${season}`);
+      validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, animeName, [], 60, null, originalEpisode);
+      console.log(`[Nyaa] Episode validation: ${validatedTorrents.length}/${beforeCount} torrents match E${episode}${originalEpisode && originalEpisode !== episode ? ` (or S${season}E${originalEpisode})` : ''} S${season}`);
     }
     
     // Cache validated results
@@ -6363,7 +6854,7 @@ async function scrapeNyaa(animeName, episode = null, season = 1, isMovie = false
  * @param {boolean} isMovie - Whether this is a movie (skip episode filtering)
  * @returns {Promise<Array>} Array of torrent objects
  */
-async function scrapeAnimeTosho(animeName, episode = null, season = 1, isMovie = false) {
+async function scrapeAnimeTosho(animeName, episode = null, season = 1, isMovie = false, originalEpisode = null) {
   const cacheKey = isMovie ? `tosho:movie:${animeName}` : `tosho:${animeName}:S${season}:${episode || 'all'}`;
   
   // Check cache
@@ -6478,8 +6969,8 @@ async function scrapeAnimeTosho(animeName, episode = null, season = 1, isMovie =
       console.log(`[AnimeTosho] Movie validation: ${validatedTorrents.length}/${beforeCount} torrents match movie pattern`);
     } else if (episode) {
       const beforeCount = torrents.length;
-      validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, animeName);
-      console.log(`[AnimeTosho] Episode validation: ${validatedTorrents.length}/${beforeCount} torrents match E${episode} S${season}`);
+      validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, animeName, [], 60, null, originalEpisode);
+      console.log(`[AnimeTosho] Episode validation: ${validatedTorrents.length}/${beforeCount} torrents match E${episode}${originalEpisode && originalEpisode !== episode ? ` (or S${season}E${originalEpisode})` : ''} S${season}`);
     }
     
     // Cache validated results
@@ -6503,7 +6994,7 @@ async function scrapeAnimeTosho(animeName, episode = null, season = 1, isMovie =
  * @param {boolean} isMovie - Whether this is a movie (skip episode filtering)
  * @returns {Promise<Array>} Array of torrent objects
  */
-async function scrapeAnimeToshoByAniDbId(anidbId, episode = null, season = 1, isMovie = false) {
+async function scrapeAnimeToshoByAniDbId(anidbId, episode = null, season = 1, isMovie = false, originalEpisode = null) {
   if (!anidbId) {
     console.log('[AnimeTosho-AniDB] No AniDB ID provided');
     return [];
@@ -6606,8 +7097,8 @@ async function scrapeAnimeToshoByAniDbId(anidbId, episode = null, season = 1, is
       console.log(`[AnimeTosho-AniDB] Movie validation: ${validatedTorrents.length}/${beforeCount} torrents match movie pattern`);
     } else if (episode) {
       const beforeCount = torrents.length;
-      validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, null);
-      console.log(`[AnimeTosho-AniDB] Episode validation: ${validatedTorrents.length}/${beforeCount} torrents match E${episode} S${season}`);
+      validatedTorrents = filterTorrentsByEpisode(torrents, episode, season, null, [], 60, null, originalEpisode);
+      console.log(`[AnimeTosho-AniDB] Episode validation: ${validatedTorrents.length}/${beforeCount} torrents match E${episode}${originalEpisode && originalEpisode !== episode ? ` (or S${season}E${originalEpisode})` : ''} S${season}`);
     }
     
     // Cache validated results
@@ -6630,7 +7121,7 @@ async function scrapeAnimeToshoByAniDbId(anidbId, episode = null, season = 1, is
  * @param {boolean} isMovie - Whether this is a movie (skip episode filtering)
  * @returns {Promise<Array>} Array of torrent objects
  */
-async function scrapeNyaaWithSynonyms(synonyms, episode = null, season = 1, isMovie = false) {
+async function scrapeNyaaWithSynonyms(synonyms, episode = null, season = 1, isMovie = false, originalEpisode = null) {
   if (!synonyms || synonyms.length === 0) {
     return [];
   }
@@ -6643,7 +7134,7 @@ async function scrapeNyaaWithSynonyms(synonyms, episode = null, season = 1, isMo
     if (!synonym || synonym.length < 3) continue;
     
     try {
-      const results = await scrapeNyaa(synonym, episode, season, isMovie);
+      const results = await scrapeNyaa(synonym, episode, season, isMovie, originalEpisode);
       
       for (const torrent of results) {
         if (!seenHashes.has(torrent.infoHash)) {
@@ -6680,13 +7171,15 @@ async function scrapeNyaaWithSynonyms(synonyms, episode = null, season = 1, isMo
  * 3. Synonym-based search if primary title yields no results
  * @param {string} contentType - 'movie', 'episode', or null (for regular episodes)
  */
-async function getTorrentStreams(anime, episode = null, season = 1, contentType = null) {
+async function getTorrentStreams(anime, episode = null, season = 1, contentType = null, originalEpisode = null) {
   // Handle both old string-based calls and new object-based calls
   const animeName = typeof anime === 'string' ? anime : 
     (anime.name || anime.title?.userPreferred || anime.title?.romaji || 'Unknown');
   const anidbId = typeof anime === 'object' ? (anime.anidb_id || anime.adb) : null;
   const synonyms = typeof anime === 'object' ? (anime.synonyms || []) : [];
   const isMovie = contentType === 'movie';
+  // originalEpisode is the Stremio-provided seasonal episode (e.g., S5E1 = 1) before absolute conversion
+  const altEpisode = (originalEpisode && originalEpisode !== episode) ? originalEpisode : null;
   
   console.log(`[TorrentStreams] Searching for "${animeName}" ${isMovie ? '(MOVIE)' : `E${episode || 'all'} S${season}`}${anidbId ? ` (AniDB: ${anidbId})` : ''}`);
   
@@ -6696,12 +7189,12 @@ async function getTorrentStreams(anime, episode = null, season = 1, contentType 
   // Priority 1: AniDB ID-based search (most accurate)
   // For movies, skip episode filtering by passing isMovie flag
   if (anidbId) {
-    searchTasks.push(scrapeAnimeToshoByAniDbId(anidbId, isMovie ? null : episode, season, isMovie));
+    searchTasks.push(scrapeAnimeToshoByAniDbId(anidbId, isMovie ? null : episode, season, isMovie, altEpisode));
   }
   
   // Priority 2: Title-based search on both Nyaa and AnimeTosho
-  searchTasks.push(scrapeNyaa(animeName, isMovie ? null : episode, season, isMovie));
-  searchTasks.push(scrapeAnimeTosho(animeName, isMovie ? null : episode, season, isMovie));
+  searchTasks.push(scrapeNyaa(animeName, isMovie ? null : episode, season, isMovie, altEpisode));
+  searchTasks.push(scrapeAnimeTosho(animeName, isMovie ? null : episode, season, isMovie, altEpisode));
   
   // Execute all searches in parallel
   const results = await Promise.all(searchTasks);
@@ -6744,7 +7237,7 @@ async function getTorrentStreams(anime, episode = null, season = 1, contentType 
   // If no results and we have synonyms, try synonym search
   if (combined.length === 0 && synonyms.length > 0) {
     console.log(`[TorrentStreams] No results for primary title, trying ${synonyms.length} synonyms...`);
-    const synonymResults = await scrapeNyaaWithSynonyms(synonyms, episode, season, isMovie);
+    const synonymResults = await scrapeNyaaWithSynonyms(synonyms, episode, season, isMovie, altEpisode);
     
     for (const torrent of synonymResults) {
       if (!seen.has(torrent.infoHash)) {
@@ -7134,31 +7627,49 @@ async function checkTorBoxCacheBatch(infoHashes, apiKey) {
     );
     
     if (!response.ok) {
-      console.error(`[TB] Cache check failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[TB] Cache check failed: ${response.status} - ${errorText.substring(0, 200)}`);
       infoHashes.forEach(h => results.set(h.toLowerCase(), null));
       return results;
     }
     
     const data = await response.json();
-    console.log(`[TB] Cache check response: ${JSON.stringify(data).substring(0, 200)}`);
+    console.log(`[TB] Cache check response: ${JSON.stringify(data).substring(0, 300)}`);
+    
+    // Handle TorBox API errors (e.g., rate limit, invalid key)
+    if (data.success === false || data.error) {
+      console.error(`[TB] API error: ${data.detail || data.error || 'Unknown error'}`);
+      infoHashes.forEach(h => results.set(h.toLowerCase(), null));
+      return results;
+    }
     
     // TorBox with format=list returns { "success": true, "data": [{hash, files, ...}, ...] }
+    // An empty array means no hashes are cached
     if (data.success && Array.isArray(data.data)) {
-      // Create a set of cached hashes
-      const cachedHashes = new Set(data.data.map(item => item.hash?.toLowerCase()));
+      // Create a set of cached hashes (only if data is non-empty)
+      const cachedHashes = new Set();
+      for (const item of data.data) {
+        if (item && item.hash) {
+          cachedHashes.add(item.hash.toLowerCase());
+        }
+      }
       
       for (const hash of infoHashes) {
         const lowerHash = hash.toLowerCase();
         results.set(lowerHash, cachedHashes.has(lowerHash));
       }
-    } else if (data.success && typeof data.data === 'object') {
-      // Fallback for object format
+    } else if (data.success && data.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+      // Fallback for object format (older API response style)
       for (const hash of infoHashes) {
         const lowerHash = hash.toLowerCase();
         results.set(lowerHash, data.data[lowerHash] === true || data.data[hash] === true);
       }
+    } else if (data.success && (data.data === null || data.data === undefined)) {
+      // Empty response means no cached hashes
+      console.log(`[TB] No cached torrents found`);
+      infoHashes.forEach(h => results.set(h.toLowerCase(), false));
     } else {
-      console.error(`[TB] Unexpected response format:`, data);
+      console.error(`[TB] Unexpected response format: ${JSON.stringify(data).substring(0, 200)}`);
       infoHashes.forEach(h => results.set(h.toLowerCase(), null));
     }
     
@@ -8241,20 +8752,36 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
     };
   }
   
-  // Convert Stremio season:episode to absolute episode number for long-running shows
-  // Cinemeta splits long anime into seasons but AllAnime uses absolute episode numbers
-  const absoluteEpisode = convertToAbsoluteEpisode(baseId, season, episode);
-  if (absoluteEpisode !== episode) {
-    console.log(`Episode mapping: S${season}E${episode} → absolute E${absoluteEpisode} for ${anime?.name || baseId}`);
+  // Convert Stremio season:episode to absolute episode number for shows with merged seasons
+  // For merged shows (like Golden Kamuy, Dan Da Dan), AllAnime uses absolute episode numbers
+  // For season-split shows (like MHA), AllAnime uses per-season numbers (absoluteEpisode == episode)
+  let absoluteEpisode = await convertToAbsoluteEpisodeWithFallback(baseId, season, episode, anime);
+  const isMergedShow = absoluteEpisode !== episode;
+  if (isMergedShow) {
+    console.log(`Merged show: S${season}E${episode} → absolute E${absoluteEpisode} for ${anime?.name || baseId}`);
+  }
+  
+  // Check for Part 2 / Split Cour handling
+  // Shows like "Sakamoto Days" are split into separate entries on AllAnime:
+  //   - Sakamoto Days (E1-11) + Sakamoto Days Part 2 (E1-?)
+  // Stremio treats this as one continuous season (S1E1-22)
+  // We need to switch to the Part 2 entry and adjust the episode number
+  const part2Mapping = getPart2Mapping(baseId, season, episode);
+  if (part2Mapping) {
+    console.log(`[Part2] Using Part 2 show ID: ${part2Mapping.showId}, adjusted episode: ${part2Mapping.adjustedEpisode}`);
+    showId = part2Mapping.showId;
+    absoluteEpisode = part2Mapping.adjustedEpisode;
   }
   
   // Episode bounds validation - prevent requesting wrong episodes
-  if (availableEpisodes && absoluteEpisode > availableEpisodes) {
-    console.log(`Episode ${absoluteEpisode} exceeds available episodes (${availableEpisodes}) for ${anime?.name || baseId}`);
+  // ONLY apply for non-merged shows where availableEpisodes is reliable (per-season)
+  // For merged shows, availableEpisodes from AllAnime doesn't match our absolute numbering
+  if (!isMergedShow && availableEpisodes && episode > availableEpisodes) {
+    console.log(`Episode ${episode} exceeds available episodes (${availableEpisodes}) for ${anime?.name || baseId}`);
     return { 
       streams: [{
         name: 'AnimeStream',
-        title: `⚠️ Episode ${absoluteEpisode} not available yet (${availableEpisodes} released)`,
+        title: `⚠️ Episode ${episode} not available yet (${availableEpisodes} released)`,
         externalUrl: 'https://stremio.com'
       }]
     };
@@ -8269,6 +8796,7 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
     const includeHttps = config.streamMode === 'https' || config.streamMode === 'both';
     
     // Add AllAnime streams (hardsubbed) - only if HTTPS streams are enabled
+    // Use absoluteEpisode which is already correctly calculated for both merged and season-split shows
     if (includeHttps) {
       const streams = await getEpisodeSources(showId, absoluteEpisode);
       
@@ -8300,10 +8828,17 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
       // This is critical for accurate torrent searching via AnimeTosho
       const enrichedAnime = await enrichAnimeWithMappings(anime, baseId);
       const animeName = enrichedAnime.name || enrichedAnime.title?.userPreferred || enrichedAnime.title?.romaji || 'Unknown';
+      
+      // Calculate absolute episode for torrent searching (different from AllAnime episode handling)
+      // Long-running shows like One Piece use absolute numbers on torrent sites (e.g., "One Piece 936")
+      const torrentAbsoluteEpisode = await calculateAbsoluteEpisodeForTorrents(baseId, season, episode);
+      
       // Pass full anime object for ID-based torrent search (AniDB ID is most accurate)
       // The getTorrentStreams function handles both object and string inputs
+      // Pass both absolute episode (for torrents like "One Piece 936") and seasonal episode (for "S21E45" patterns)
       console.log(`[Stream] Enriched anime: anidb_id=${enrichedAnime.anidb_id}, mal_id=${enrichedAnime.mal_id}, synonyms=${enrichedAnime.synonyms?.length || 0}`);
-      const torrents = await getTorrentStreams(enrichedAnime, absoluteEpisode, season, type === 'movie' ? 'movie' : null);
+      console.log(`[Stream] Torrent search: E${torrentAbsoluteEpisode} (absolute) / S${season}E${episode} (seasonal)`);
+      const torrents = await getTorrentStreams(enrichedAnime, torrentAbsoluteEpisode, season, type === 'movie' ? 'movie' : null, episode);
       
       if (torrents.length > 0) {
         console.log(`[Stream] Found ${torrents.length} torrent streams for "${animeName}" ${type === 'movie' ? '(MOVIE)' : `E${absoluteEpisode}`}`);
@@ -8726,7 +9261,12 @@ export default {
         
         const skip = parseInt(extra.skip) || 0;
         const paginated = results.slice(skip, skip + PAGE_SIZE);
-        const metas = paginated.map(formatAnimeMeta);
+        let metas = paginated.map(formatAnimeMeta);
+        
+        // Apply RPDB rating posters if user has API key
+        if (config.rpdbApiKey) {
+          metas = metas.map(meta => applyRpdbPoster(meta, config.rpdbApiKey));
+        }
         
         // Search results cached for 10 minutes
         return jsonResponse({ metas }, { maxAge: CATALOG_HTTP_CACHE, staleWhileRevalidate: 300 });
@@ -8781,7 +9321,12 @@ export default {
       
       const skip = parseInt(extra.skip) || 0;
       const paginated = catalogResult.slice(skip, skip + PAGE_SIZE);
-      const metas = paginated.map(formatAnimeMeta);
+      let metas = paginated.map(formatAnimeMeta);
+      
+      // Apply RPDB rating posters if user has API key
+      if (config.rpdbApiKey) {
+        metas = metas.map(meta => applyRpdbPoster(meta, config.rpdbApiKey));
+      }
       
       // Add debug header for airing catalog
       const headers = {};

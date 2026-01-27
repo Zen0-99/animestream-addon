@@ -1,0 +1,56 @@
+﻿\n============================================================
+       AnimeStream Database Builder v6.1
+       (Otaku-Mappings + Enhanced IDs + TVDB Season Info)
+============================================================
+Mode: FULL
+IMDB Matching: ENABLED
+Cinemeta Enrichment: ENABLED
+Validation: DISABLED
+Output: C:\Users\karol\OneDrive\Documents\GitHub\animestream-addon\data\n
+­ƒôÑ Loading Otaku-Mappings (primary ID source with TVDB season)...
+   Ô£à Loaded 31,182 entries
+   ­ƒôè With IMDB: 7154, AniDB: 13581, TVDB Season: 8743
+
+­ƒôÑ Loading Fribb/anime-lists mappings (fallback)...
+   Ô£à Loaded 41774 mappings
+   ­ƒôè MAL: 29893, Kitsu: 21772, AniList: 20282, IMDB: 5110
+
+­ƒôÑ Loading anime-offline-database (synonyms)...
+   Ô£à Loaded 40395 entries
+   ­ƒôè MAL synonyms: 29879, Kitsu synonyms: 21798
+
+
+­ƒôû Loading IMDB basics (filtering to animation)...
+
+   Processed 0.5M lines, found 5894 animation titles
+   Processed 1.0M lines, found 7048 animation titles
+   Processed 1.5M lines, found 8433 animation titles
+   Processed 2.0M lines, found 9916 animation titles
+   Processed 2.5M lines, found 11407 animation titles
+   Processed 3.0M lines, found 13326 animation titles
+   Processed 3.5M lines, found 14709 animation titles
+   Processed 4.0M lines, found 16578 animation titles
+   Processed 4.5M lines, found 17937 animation titles
+   Processed 5.0M lines, found 19876 animation titles
+   Processed 5.5M lines, found 21839 animation titles
+   Processed 6.0M lines, found 23659 animation titles
+   Processed 6.5M lines, found 25364 animation titles
+   Processed 7.0M lines, found 27015 animation titles
+   Processed 7.5M lines, found 28798 animation titles
+   Processed 8.0M lines, found 30928 animation titles
+   Processed 8.5M lines, found 32764 animation titles
+   Processed 9.0M lines, found 35141 animation titles
+   Processed 9.5M lines, found 37108 animation titles
+   Processed 10.0M lines, found 38742 animation titles
+   Processed 10.5M lines, found 40591 animation titles
+   Processed 11.0M lines, found 42572 animation titles
+   Processed 11.5M lines, found 44068 animation titles
+   Processed 12.0M lines, found 45550 animation titles
+   Ô£à Loaded 46028 animation titles
+
+­ƒôû Loading IMDB alternative titles...
+
+   Processed 1.0M lines
+   Processed 2.0M lines
+   Processed 3.0M lines
+   Processed 4.0M lines
