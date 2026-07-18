@@ -29,7 +29,7 @@ const DATA_DIR = path.join(__dirname, '..', 'data');
 const NAMESPACE_ID = 'cd4c8644874547f18a077cc646eda3d6';
 
 // Must match CACHE_BUSTER in worker-github.js
-const CACHE_BUSTER = 'v16';
+const CACHE_BUSTER = 'v17';
 
 const FILES = {
   catalog: {

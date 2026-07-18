@@ -22,7 +22,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
-/.github
 
 # Wrangler/Cloudflare
 .wrangler/
