@@ -5043,7 +5043,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null, selec
 
   return {
     id: 'community.animestream',
-    version: '1.4.0',
+    version: '1.5.0',
     name: 'AnimeStream',
     description: 'All your favorite Anime series and movies with filtering by genre, seasonal releases, currently airing and ratings. Stream both SUB and DUB options via AllAnime.',
     // CRITICAL: Use explicit resource objects with types and idPrefixes
