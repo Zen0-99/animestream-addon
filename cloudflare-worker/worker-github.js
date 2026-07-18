@@ -8,7 +8,7 @@
 // ===== CONFIGURATION =====
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/Zen0-99/animestream-addon/master/data';
 const CACHE_TTL = 21600; // 6 hours cache for GitHub data (catalog is static, rarely updates)
-const CACHE_BUSTER = 'v15'; // Change this to bust cache after catalog updates
+const CACHE_BUSTER = 'v16'; // Change this to bust cache after catalog updates
 const ALLANIME_CACHE_TTL = 300; // 5 minutes for AllAnime API responses (streams change frequently)
 const MANIFEST_CACHE_TTL = 86400; // 24 hours for manifest (rarely changes)
 const CATALOG_HTTP_CACHE = 21600; // 6 hours HTTP cache for catalog responses (static content)
@@ -41,6 +41,93 @@ const ANILIST_OAUTH_URL = 'https://anilist.co/api/v2/oauth/authorize';
 const MAL_API_BASE = 'https://api.myanimelist.net/v2';
 const MAL_OAUTH_URL = 'https://myanimelist.net/v1/oauth2/authorize';
 const MAL_CLIENT_ID = 'e1c53f5d91d73133d628b7e2f56df992';
+
+// ===== KV API CACHE INFRASTRUCTURE =====
+// Global env reference - set at the start of each fetch handler invocation.
+// This allows module-level helper functions to access KV bindings without
+// threading env through every function signature.
+let __ENV = null;
+let __CTX = null;
+
+// KV cache TTLs (in seconds) for different data types
+const KV_TTL = {
+  CATALOG: 0,          // No TTL - catalog is versioned via key (catalog:v15), updated manually
+  FILTERS: 0,          // Same as catalog - versioned key
+  MAPPINGS: 0,         // Same as catalog - versioned key
+  AA_STREAMS: 300,     // 5 minutes - stream sources change frequently
+  AA_SEARCH: 1800,     // 30 minutes - search results are relatively stable
+  AA_DETAILS: 3600,    // 1 hour - show details (episode counts) change occasionally
+  CINEMETA: 3600,      // 1 hour - metadata/episode lists rarely change
+  HAGLUND: 86400,      // 24 hours - ID mappings are very stable
+};
+
+// In-memory cache for KV reads to avoid repeated KV lookups within the same worker instance.
+// This is a second layer of caching on top of KV.
+const kvMemoryCache = new Map();
+const MAX_KV_MEMORY_CACHE = 500;
+
+/**
+ * Get a value from KV API_CACHE, with in-memory fallback.
+ * @param {string} key - KV key
+ * @returns {Promise<any|null>} Parsed JSON value or null if not found
+ */
+async function kvCacheGet(key) {
+  // Check in-memory cache first (avoids KV read billing)
+  const memCached = kvMemoryCache.get(key);
+  if (memCached !== undefined) {
+    return memCached;
+  }
+
+  if (!__ENV?.API_CACHE) return null;
+
+  try {
+    const raw = await __ENV.API_CACHE.get(key, 'json');
+    if (raw === null) {
+      // Cache null result too (negative caching) to avoid repeated KV lookups
+      // but use a short-lived entry
+      if (kvMemoryCache.size >= MAX_KV_MEMORY_CACHE) {
+        const oldestKey = kvMemoryCache.keys().next().value;
+        kvMemoryCache.delete(oldestKey);
+      }
+      kvMemoryCache.set(key, null);
+    }
+    return raw;
+  } catch (e) {
+    console.error(`[KV] Error reading key "${key}":`, e.message);
+    return null;
+  }
+}
+
+/**
+ * Store a value in KV API_CACHE and update in-memory cache.
+ * Uses ctx.waitUntil to avoid blocking the response on KV writes.
+ * @param {string} key - KV key
+ * @param {any} value - Value to store (will be JSON-serialized)
+ * @param {number} ttl - TTL in seconds (0 = no expiration)
+ * @param {Object} ctx - Worker context (for waitUntil)
+ */
+function kvCachePut(key, value, ttl = 0, ctx = null) {
+  // Update in-memory cache immediately
+  if (kvMemoryCache.size >= MAX_KV_MEMORY_CACHE) {
+    const oldestKey = kvMemoryCache.keys().next().value;
+    kvMemoryCache.delete(oldestKey);
+  }
+  kvMemoryCache.set(key, value);
+
+  if (!__ENV?.API_CACHE) return;
+
+  const putPromise = ttl > 0
+    ? __ENV.API_CACHE.put(key, JSON.stringify(value), { expirationTtl: ttl })
+    : __ENV.API_CACHE.put(key, JSON.stringify(value));
+
+  const waitCtx = ctx || __CTX;
+  if (waitCtx?.waitUntil) {
+    waitCtx.waitUntil(putPromise);
+  } else {
+    // Fallback: fire-and-forget (best-effort, may not complete)
+    putPromise.catch(e => console.error(`[KV] Error writing key "${key}":`, e.message));
+  }
+}
 
 // ===== USER TOKEN CACHE =====
 // In-memory cache to reduce KV reads (tokens are read frequently during playback)
@@ -178,12 +265,20 @@ function jsonResponse(data, options = {}) {
 async function getIdMappings(id, source) {
   const cacheKey = `${source}:${id}`;
   
-  // Check cache first
+  // Check in-memory cache first
   if (haglundIdCache.has(cacheKey)) {
     return haglundIdCache.get(cacheKey);
   }
+
+  // Check KV cache (persists across worker instance recyclings, 24h TTL)
+  const kvKey = `hl:ids:${cacheKey}`;
+  const kvCached = await kvCacheGet(kvKey);
+  if (kvCached) {
+    haglundIdCache.set(cacheKey, kvCached);
+    return kvCached;
+  }
   
-  // Cleanup cache if too large
+  // Cleanup in-memory cache if too large
   if (haglundIdCache.size > MAX_HAGLUND_CACHE_ENTRIES) {
     const entries = Array.from(haglundIdCache.entries());
     const toDelete = entries.slice(0, Math.floor(MAX_HAGLUND_CACHE_ENTRIES / 2));
@@ -210,8 +305,9 @@ async function getIdMappings(id, source) {
       imdb: data.imdb || null
     };
     
-    // Cache the result
+    // Cache the result (in-memory + KV with 24h TTL)
     haglundIdCache.set(cacheKey, mappings);
+    kvCachePut(kvKey, mappings, KV_TTL.HAGLUND);
     
     return mappings;
   } catch (error) {
@@ -229,9 +325,17 @@ async function getIdMappings(id, source) {
 async function getIdMappingsFromImdb(imdbId, season = null) {
   const cacheKey = season ? `imdb:${imdbId}:${season}` : `imdb:${imdbId}`;
   
-  // Check cache first
+  // Check in-memory cache first
   if (haglundIdCache.has(cacheKey)) {
     return haglundIdCache.get(cacheKey);
+  }
+
+  // Check KV cache (persists across worker instance recyclings, 24h TTL)
+  const kvKey = `hl:imdb:${cacheKey}`;
+  const kvCached = await kvCacheGet(kvKey);
+  if (kvCached) {
+    haglundIdCache.set(cacheKey, kvCached);
+    return kvCached;
   }
   
   try {
@@ -270,8 +374,9 @@ async function getIdMappingsFromImdb(imdbId, season = null) {
       imdb: seasonData.imdb || imdbId
     };
     
-    // Cache the result
+    // Cache the result (in-memory + KV with 24h TTL)
     haglundIdCache.set(cacheKey, mappings);
+    kvCachePut(kvKey, mappings, KV_TTL.HAGLUND);
     
     return mappings;
   } catch (error) {
@@ -1006,6 +1111,36 @@ const CONFIGURE_HTML = `<!doctype html>
               </div>
               <div class="help">Hide long-running anime like One Piece, Detective Conan, etc. from the "Currently Airing" catalog.</div>
             </div>
+
+            <div>
+              <div class="section-title" style="font-size:14px;margin-bottom:8px">Content Origin</div>
+              <div class="lang-controls" style="grid-template-columns:1fr auto">
+                <select id="contentOriginPicker" class="control" size="1">
+                  <option value="">Select origins to include...</option>
+                  <option value="JP">Japan (JP)</option>
+                  <option value="CN">China (CN)</option>
+                  <option value="KR">Korea (KR)</option>
+                  <option value="TW">Taiwan (TW)</option>
+                </select>
+                <button class="btn btn-sm btn-outline" id="originReset" type="button">Reset</button>
+              </div>
+              <div class="help">Filter catalog by country of origin. Leave empty to show all. Selecting only JP will hide Chinese donghua and Korean anime.</div>
+              <div id="originPills" class="pill-grid"></div>
+            </div>
+
+            <div>
+              <div class="section-title" style="font-size:14px;margin-bottom:8px">Minimum Episode Runtime</div>
+              <div class="lang-controls" style="grid-template-columns:1fr auto">
+                <select id="minRuntimePicker" class="control" size="1">
+                  <option value="0">No minimum (show all)</option>
+                  <option value="10">10+ minutes</option>
+                  <option value="15">15+ minutes</option>
+                  <option value="20">20+ minutes</option>
+                  <option value="22">22+ minutes (standard anime)</option>
+                </select>
+              </div>
+              <div class="help">Hide short-form content (e.g., 3-minute episodes, music videos) from catalogs. Does not affect movies or search.</div>
+            </div>
           </div>
         </div>
 
@@ -1202,6 +1337,10 @@ const CONFIGURE_HTML = `<!doctype html>
       subdlApiKey: '',
       // RPDB rating posters
       rpdbApiKey: '',
+      // Content origin filter (e.g., ['JP'] to only show Japanese anime)
+      contentOrigins: [],
+      // Minimum episode runtime in minutes (0 = no filter)
+      minRuntime: 0,
       // User lists from connected accounts
       anilistLists: [],
       malLists: []
@@ -1228,6 +1367,8 @@ const CONFIGURE_HTML = `<!doctype html>
         if (key === 'sk' && value) state.subdlApiKey = decodeURIComponent(value);
         if (key === 'rp' && value) state.rpdbApiKey = decodeURIComponent(value);
         if (key === 'tp' && value) state.torrentPrefs = value.split(',');
+        if (key === 'co' && value) state.contentOrigins = value.split(',').map(o => o.trim().toUpperCase()).filter(Boolean);
+        if (key === 'minrt' && value) { const rt = parseInt(value, 10); if (!isNaN(rt) && rt >= 0) state.minRuntime = rt; }
       });
       persist();
     }
@@ -1517,6 +1658,75 @@ const CONFIGURE_HTML = `<!doctype html>
     
     renderTorrentPrefsPills();
     updateTorrentPrefsVisibility();
+
+    // ===== CONTENT ORIGIN PILLS =====
+    const ORIGIN_NAMES = { JP: 'Japan (JP)', CN: 'China (CN)', KR: 'Korea (KR)', TW: 'Taiwan (TW)' };
+    const originPicker = $('#contentOriginPicker');
+    const originResetBtn = $('#originReset');
+    const originPillsEl = $('#originPills');
+
+    function renderOriginPills() {
+      if (!originPillsEl) return;
+      originPillsEl.innerHTML = (state.contentOrigins || []).map(code =>
+        '<div class="pill" data-key="' + code + '"><span class="txt">' + (ORIGIN_NAMES[code] || code) + '</span><span class="handle" title="Remove">✕</span></div>'
+      ).join('');
+
+      if (originPicker) {
+        Array.from(originPicker.options).forEach(opt => {
+          if (opt.value) opt.disabled = (state.contentOrigins || []).includes(opt.value);
+        });
+        originPicker.value = '';
+      }
+
+      originPillsEl.querySelectorAll('.handle').forEach(handle => {
+        handle.onclick = () => {
+          const key = handle.parentElement.dataset.key;
+          state.contentOrigins = (state.contentOrigins || []).filter(c => c !== key);
+          persist();
+          renderOriginPills();
+          rerender();
+        };
+      });
+    }
+
+    if (originPicker) {
+      originPicker.onchange = () => {
+        const val = originPicker.value;
+        if (!val) return;
+        if (!state.contentOrigins) state.contentOrigins = [];
+        if (!state.contentOrigins.includes(val)) {
+          state.contentOrigins.push(val);
+          persist();
+          renderOriginPills();
+          rerender();
+          setTimeout(() => originPicker.focus(), 10);
+        }
+        originPicker.value = '';
+      };
+    }
+
+    if (originResetBtn) {
+      originResetBtn.onclick = () => {
+        state.contentOrigins = [];
+        persist();
+        renderOriginPills();
+        rerender();
+      };
+    }
+
+    renderOriginPills();
+
+    // ===== MINIMUM RUNTIME SELECTOR =====
+    const minRuntimePicker = $('#minRuntimePicker');
+    if (minRuntimePicker) {
+      minRuntimePicker.value = String(state.minRuntime || 0);
+      minRuntimePicker.onchange = () => {
+        const val = parseInt(minRuntimePicker.value, 10) || 0;
+        state.minRuntime = val;
+        persist();
+        rerender();
+      };
+    }
 
     showCountsEl.onchange = () => { state.showCounts = showCountsEl.checked; persist(); rerender(); };
     excludeLongRunningEl.onchange = () => { state.excludeLongRunning = excludeLongRunningEl.checked; persist(); rerender(); };
@@ -2050,6 +2260,10 @@ const CONFIGURE_HTML = `<!doctype html>
       if (state.rpdbApiKey) parts.push('rp=' + encodeURIComponent(state.rpdbApiKey));
       // Torrent preferences (only if any are set)
       if (state.torrentPrefs && state.torrentPrefs.length > 0) parts.push('tp=' + state.torrentPrefs.join(','));
+      // Content origins (only if any are selected)
+      if (state.contentOrigins && state.contentOrigins.length > 0) parts.push('co=' + state.contentOrigins.join(','));
+      // Minimum runtime (only if non-zero)
+      if (state.minRuntime && state.minRuntime > 0) parts.push('minrt=' + state.minRuntime);
       // Use | as separator (Stremio standard) instead of & (URL query string style)
       return parts.join('|');
     }
@@ -2545,8 +2759,15 @@ async function calculateAbsoluteEpisodeForTorrents(imdbId, season, episode) {
 
 // Check if URL is a direct video stream
 function isDirectStream(url) {
-  if (/\.(mp4|m3u8|mkv|webm)(\?|$)/i.test(url)) return true;
+  // Direct video file extensions
+  if (/\.(mp4|m3u8|mkv|webm|ts|mpd|avi|mov)(\?|$)/i.test(url)) return true;
+  // Known streaming providers that serve direct video
   if (/fast4speed\.rsvp/i.test(url)) return true;
+  if (/streamtape|streamta\.pe|streamtape\.to/i.test(url)) return true;
+  if (/mp4upload/i.test(url)) return true;
+  // AllAnime often uses redirect/proxy URLs that resolve to direct streams
+  // Allow any URL that looks like a video stream endpoint
+  if (/(stream|video|play|embed|watch|cdn|media)/i.test(url) && !/(youtube|twitch|facebook|twitter|instagram)/i.test(url)) return true;
   return false;
 }
 
@@ -2555,12 +2776,21 @@ function isDirectStream(url) {
  * Uses in-memory cache to reduce API calls
  */
 async function searchAllAnime(searchQuery, limit = 10) {
-  // Check cache first
+  // Check in-memory cache first
   const cacheKey = `${searchQuery}:${limit}`;
   const cached = getCachedSearch(cacheKey);
   if (cached) {
     console.log(`AllAnime search cache hit: "${searchQuery}"`);
     return cached;
+  }
+
+  // Check KV cache (persists across worker instance recyclings)
+  const kvKey = `aa:search:${cacheKey}`;
+  const kvCached = await kvCacheGet(kvKey);
+  if (kvCached) {
+    console.log(`AllAnime search KV cache hit: "${searchQuery}"`);
+    setCachedSearch(cacheKey, kvCached);
+    return kvCached;
   }
 
   const query = `
@@ -2602,8 +2832,11 @@ async function searchAllAnime(searchQuery, limit = 10) {
       aniListId: show.aniListId ? parseInt(show.aniListId) : null,
     }));
     
-    // Cache the results
+    // Cache the results (in-memory + KV with 30 min TTL)
     setCachedSearch(cacheKey, results);
+    if (results.length > 0) {
+      kvCachePut(kvKey, results, KV_TTL.AA_SEARCH);
+    }
     return results;
   } catch (e) {
     console.error('AllAnime search error:', e.message);
@@ -2615,6 +2848,13 @@ async function searchAllAnime(searchQuery, limit = 10) {
  * Get episode sources from AllAnime
  */
 async function getEpisodeSources(showId, episode) {
+  // Check KV cache first - stream sources for a given showId+episode are stable for minutes
+  const kvKey = `aa:streams:${showId}:${episode}`;
+  const cached = await kvCacheGet(kvKey);
+  if (cached) {
+    return cached;
+  }
+
   const query = `
     query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) {
       episode(showId: $showId, translationType: $translationType, episodeString: $episodeString) {
@@ -2673,6 +2913,12 @@ async function getEpisodeSources(showId, episode) {
     }
   }
 
+  // Cache in KV (5 min TTL - streams change when new sources are added)
+  // Only cache non-empty results to avoid masking temporary API failures
+  if (streams.length > 0) {
+    kvCachePut(kvKey, streams, KV_TTL.AA_STREAMS);
+  }
+
   return streams;
 }
 
@@ -2682,6 +2928,13 @@ async function getEpisodeSources(showId, episode) {
  * Get full show details from AllAnime including available episodes
  */
 async function getAllAnimeShowDetails(showId) {
+  // Check KV cache first - show details (episode counts) change occasionally
+  const kvKey = `aa:details:${showId}`;
+  const cached = await kvCacheGet(kvKey);
+  if (cached) {
+    return cached;
+  }
+
   const query = `
     query ($showId: String!) {
       show(_id: $showId) {
@@ -2713,7 +2966,13 @@ async function getAllAnimeShowDetails(showId) {
     if (!response.ok) return null;
     
     const data = await response.json();
-    return data?.data?.show || null;
+    const show = data?.data?.show || null;
+    
+    // Cache in KV (1 hour TTL - episode counts update as new episodes air)
+    if (show) {
+      kvCachePut(kvKey, show, KV_TTL.AA_DETAILS);
+    }
+    return show;
   } catch (e) {
     console.error('AllAnime show details error:', e.message);
     return null;
@@ -2728,8 +2987,15 @@ async function getAllAnimeShowDetails(showId) {
  * Returns full metadata including poster, description, etc.
  */
 async function fetchCinemetaMeta(imdbId, type = 'series') {
+  // Check KV cache first - Cinemeta metadata/episode lists rarely change
+  const cinemetaType = type === 'movie' ? 'movie' : 'series';
+  const kvKey = `cm:meta:${imdbId}:${cinemetaType}`;
+  const cached = await kvCacheGet(kvKey);
+  if (cached) {
+    return cached;
+  }
+
   try {
-    const cinemetaType = type === 'movie' ? 'movie' : 'series';
     const response = await fetch(`https://v3-cinemeta.strem.io/meta/${cinemetaType}/${imdbId}.json`, {
       headers: buildBrowserHeaders()
     });
@@ -2742,7 +3008,7 @@ async function fetchCinemetaMeta(imdbId, type = 'series') {
     const meta = data.meta;
     
     // Return full metadata that might be useful
-    return {
+    const result = {
       id: imdbId,
       name: meta.name,
       type: cinemetaType,
@@ -2758,6 +3024,10 @@ async function fetchCinemetaMeta(imdbId, type = 'series') {
       _hasDescription: !!meta.description && meta.description.length > 10,
       _isComplete: !!meta.poster && !!meta.description && meta.description.length > 10
     };
+    
+    // Cache in KV (1 hour TTL - metadata is very stable)
+    kvCachePut(kvKey, result, KV_TTL.CINEMETA);
+    return result;
   } catch (e) {
     console.error('Cinemeta fetch error:', e.message);
     return null;
@@ -2890,11 +3160,22 @@ let idMappingsCacheTimestamp = 0;
 async function fetchIdMappings() {
   const now = Date.now();
   
-  // Return cached data if still fresh (1 hour cache)
+  // Return in-memory cached data if still fresh (6 hour cache)
   if (idMappingsCache && (now - idMappingsCacheTimestamp) < CACHE_TTL * 1000) {
     return idMappingsCache;
   }
   
+  // Try KV first (avoids GitHub raw subrequest)
+  const kvKey = `mappings:${CACHE_BUSTER}`;
+  const kvData = await kvCacheGet(kvKey);
+  if (kvData) {
+    idMappingsCache = kvData;
+    idMappingsCacheTimestamp = now;
+    console.log(`[fetchIdMappings] Loaded mappings for ${Object.keys(idMappingsCache).length} anime from KV`);
+    return idMappingsCache;
+  }
+  
+  // Fallback: fetch from GitHub raw and populate KV
   try {
     const response = await fetch(`${GITHUB_RAW_BASE}/id-mappings.json?v=${CACHE_BUSTER}`, {
       cf: { cacheTtl: CACHE_TTL, cacheEverything: true }
@@ -2907,7 +3188,10 @@ async function fetchIdMappings() {
     idMappingsCache = await response.json();
     idMappingsCacheTimestamp = now;
     
-    console.log(`[fetchIdMappings] Loaded mappings for ${Object.keys(idMappingsCache).length} anime`);
+    // Store in KV for future cold starts (no TTL - versioned by key)
+    kvCachePut(kvKey, idMappingsCache, KV_TTL.MAPPINGS);
+    
+    console.log(`[fetchIdMappings] Loaded mappings for ${Object.keys(idMappingsCache).length} anime from GitHub (KV populated)`);
     
     return idMappingsCache;
   } catch (error) {
@@ -2944,11 +3228,30 @@ async function enrichAnimeWithMappings(anime, imdbId) {
 async function fetchCatalogData() {
   const now = Date.now();
   
-  // Return cached data if still fresh
+  // Return in-memory cached data if still fresh
   if (catalogCache && filterOptionsCache && (now - cacheTimestamp) < CACHE_TTL * 1000) {
     return { catalog: catalogCache, filterOptions: filterOptionsCache };
   }
   
+  // Try KV first (avoids GitHub raw subrequests on cold starts)
+  const catalogKvKey = `catalog:${CACHE_BUSTER}`;
+  const filtersKvKey = `filters:${CACHE_BUSTER}`;
+  
+  const [kvCatalog, kvFilters] = await Promise.all([
+    kvCacheGet(catalogKvKey),
+    kvCacheGet(filtersKvKey),
+  ]);
+  
+  if (kvCatalog && kvFilters) {
+    // KV catalog value is the catalog array directly
+    catalogCache = kvCatalog.catalog || kvCatalog;
+    filterOptionsCache = kvFilters;
+    cacheTimestamp = now;
+    console.log(`[loadCatalogData] Loaded ${catalogCache.length} entries from KV (version: ${kvCatalog.version || 'unknown'})`);
+    return { catalog: catalogCache, filterOptions: filterOptionsCache };
+  }
+  
+  // Fallback: fetch from GitHub raw and populate KV
   try {
     // Fetch both files in parallel (use cache buster to force refresh after updates)
     const [catalogRes, filterRes] = await Promise.all([
@@ -2970,7 +3273,12 @@ async function fetchCatalogData() {
     filterOptionsCache = await filterRes.json();
     cacheTimestamp = now;
     
-    console.log(`[loadCatalogData] Loaded ${catalogCache.length} entries from GitHub (version: ${catalogData.version || 'unknown'})`);
+    // Store in KV for future cold starts (no TTL - versioned by key)
+    // Store the full catalogData object (includes version + catalog array)
+    kvCachePut(catalogKvKey, catalogData, KV_TTL.CATALOG);
+    kvCachePut(filtersKvKey, filterOptionsCache, KV_TTL.FILTERS);
+    
+    console.log(`[loadCatalogData] Loaded ${catalogCache.length} entries from GitHub (KV populated, version: ${catalogData.version || 'unknown'})`);
     
     return { catalog: catalogCache, filterOptions: filterOptionsCache };
   } catch (error) {
@@ -3770,6 +4078,39 @@ function isOVA(anime) {
   return true;
 }
 
+// Check if anime should be filtered based on user's content origin preference
+// config.contentOrigins is an array of country codes (e.g., ['JP', 'KR'])
+// Empty array = no filtering (show all origins)
+function shouldExcludeByOrigin(anime, config) {
+  if (!config || !config.contentOrigins || config.contentOrigins.length === 0) return false;
+  const origin = (anime.countryOfOrigin || 'JP').toUpperCase();
+  const allowedOrigins = config.contentOrigins.map(o => o.toUpperCase());
+  return !allowedOrigins.includes(origin);
+}
+
+// Check if anime should be filtered based on minimum runtime preference
+// config.minRuntime is in minutes (0 = no filter)
+// Skips filtering for movies (which are naturally longer) and entries with no runtime data
+function shouldExcludeByRuntime(anime, config) {
+  if (!config || !config.minRuntime || config.minRuntime <= 0) return false;
+  // Don't filter movies - they're naturally long
+  if (anime.subtype === 'movie') return false;
+  let runtime = anime.runtime;
+  if (typeof runtime === 'string') {
+    const match = runtime.match(/(\d+)/);
+    runtime = match ? parseInt(match[1]) : 0;
+  }
+  if (typeof runtime !== 'number' || runtime === 0) return false; // Keep if no runtime data
+  return runtime < config.minRuntime;
+}
+
+// Combined user-preference-based filter (origin + runtime)
+function shouldExcludeByUserPrefs(anime, config) {
+  if (shouldExcludeByOrigin(anime, config)) return true;
+  if (shouldExcludeByRuntime(anime, config)) return true;
+  return false;
+}
+
 // Combined filter for catalog exclusions
 function shouldExcludeFromCatalog(anime) {
   if (isHiddenDuplicate(anime)) return true;
@@ -3897,7 +4238,7 @@ function searchDatabase(catalogData, query, targetType = null) {
 // ===== CATALOG HANDLERS =====
 
 function handleTopRated(catalogData, genreFilter, config) {
-  let filtered = catalogData.filter(anime => isSeriesType(anime) && !shouldExcludeFromCatalog(anime));
+  let filtered = catalogData.filter(anime => isSeriesType(anime) && !shouldExcludeFromCatalog(anime) && !shouldExcludeByUserPrefs(anime, config));
   
   if (genreFilter) {
     const genre = parseGenreFilter(genreFilter);
@@ -3912,8 +4253,8 @@ function handleTopRated(catalogData, genreFilter, config) {
   return filtered;
 }
 
-function handleSeasonReleases(catalogData, seasonFilter) {
-  let filtered = catalogData.filter(anime => isSeriesType(anime) && !shouldExcludeFromCatalog(anime));
+function handleSeasonReleases(catalogData, seasonFilter, config) {
+  let filtered = catalogData.filter(anime => isSeriesType(anime) && !shouldExcludeFromCatalog(anime) && !shouldExcludeByUserPrefs(anime, config));
   
   const currentSeason = getCurrentSeason();
   
@@ -4009,7 +4350,7 @@ function handleAiring(catalogData, genreFilter, config) {
   // 1. Directly marked as ONGOING in our catalog
   // 2. Parent series that have an ongoing season (even if parent is marked FINISHED)
   let filtered = catalogData.filter(anime => {
-    if (!isSeriesType(anime) || shouldExcludeFromCatalog(anime)) {
+    if (!isSeriesType(anime) || shouldExcludeFromCatalog(anime) || shouldExcludeByUserPrefs(anime, config)) {
       // Debug: Log rejection reasons for MAL anime
       if (anime.id && anime.id.startsWith('mal-')) {
         console.log(`[handleAiring REJECTED] ${anime.id}: isSeriesType=${isSeriesType(anime)}, shouldExclude=${shouldExcludeFromCatalog(anime)}`);
@@ -4074,8 +4415,8 @@ function handleAiring(catalogData, genreFilter, config) {
   return filtered;
 }
 
-function handleMovies(catalogData, genreFilter) {
-  let filtered = catalogData.filter(anime => isMovieType(anime) && !shouldExcludeFromCatalog(anime));
+function handleMovies(catalogData, genreFilter, config) {
+  let filtered = catalogData.filter(anime => isMovieType(anime) && !shouldExcludeFromCatalog(anime) && !shouldExcludeByUserPrefs(anime, config));
   
   if (genreFilter) {
     const cleanFilter = parseGenreFilter(genreFilter);
@@ -4565,7 +4906,7 @@ function getManifest(filterOptions, showCounts = true, catalogData = null, selec
     
     for (const anime of catalogData) {
       if (!anime.broadcastDay || anime.status !== 'ONGOING') continue;
-      if (!isSeriesType(anime) || shouldExcludeFromCatalog(anime)) continue;
+      if (!isSeriesType(anime) || shouldExcludeFromCatalog(anime) || shouldExcludeByUserPrefs(anime, config)) continue;
       
       // Apply the same long-running filter logic as in handleAiring
       const year = anime.year || currentYear;
@@ -4769,7 +5110,9 @@ function parseConfig(configStr) {
     subtitleLanguages: ['en', 'ja'],
     subdlApiKey: '',
     rpdbApiKey: '',
-    torrentPrefs: [] // e.g. ['q_1080', 'q_720', 'a_sub', 'n_3']
+    torrentPrefs: [], // e.g. ['q_1080', 'q_720', 'a_sub', 'n_3']
+    contentOrigins: [], // e.g. ['JP', 'KR'] - empty = all origins
+    minRuntime: 0 // minimum episode runtime in minutes (0 = no filter)
   };
   
   // Early return for empty/null/undefined
@@ -4908,6 +5251,15 @@ function parseConfig(configStr) {
     if (key === 'slang' && value) {
       config.subtitleLanguages = value.split(',').map(l => l.trim().toLowerCase()).filter(Boolean);
     }
+    // Content origins (e.g., co=JP,KR,CN - only show anime from these countries)
+    if (key === 'co' && value) {
+      config.contentOrigins = value.split(',').map(o => o.trim().toUpperCase()).filter(Boolean);
+    }
+    // Minimum runtime in minutes (e.g., minrt=15 filters out shows with episodes < 15 min)
+    if (key === 'minrt' && value) {
+      const rt = parseInt(value, 10);
+      if (!isNaN(rt) && rt >= 0) config.minRuntime = rt;
+    }
     // SubDL API key (already extracted above, but keep for legacy support)
     if (key === 'sk' && value && !config.subdlApiKey) {
       config.subdlApiKey = decodeURIComponent(value);
@@ -4937,7 +5289,9 @@ function parseConfig(configStr) {
       subtitleLanguages: ['en', 'ja'],
       subdlApiKey: '',
       rpdbApiKey: '',
-      torrentPrefs: []
+      torrentPrefs: [],
+      contentOrigins: [],
+      minRuntime: 0
     };
   }
 }
@@ -5010,6 +5364,67 @@ function findAnimeById(catalog, id) {
 // Legacy function for backwards compatibility
 function findAnimeByImdbId(catalog, imdbId) {
   return findAnimeById(catalog, imdbId);
+}
+
+/**
+ * Automatically detect Part 2 / split-cour entries on AllAnime
+ * Used as fallback when a show isn't in the manual PART2_MAPPINGS
+ * Searches AllAnime for "{name} Part 2", "{name} 2nd Cour", etc.
+ * @param {string} animeName - Name of the anime
+ * @param {string} originalShowId - AllAnime show ID for Part 1
+ * @param {number} episode - Requested episode (Stremio numbering)
+ * @param {number} availableEpisodes - Episodes available in Part 1
+ * @param {number} season - Season number
+ * @returns {Promise<{showId: string, adjustedEpisode: number} | null>}
+ */
+async function tryAutoPart2Detection(animeName, originalShowId, episode, availableEpisodes, season) {
+  if (!animeName || !availableEpisodes || episode <= availableEpisodes) return null;
+  
+  // Build search queries for Part 2 variants
+  // AllAnime often names split-cour shows as "Name Part 2", "Name 2nd Season", "Name Cour 2", etc.
+  const searchVariants = [
+    `${animeName} Part 2`,
+    `${animeName} Part II`,
+    `${animeName} 2nd Cour`,
+    `${animeName} Second Cour`,
+    `${animeName} 2nd Season`,
+    `${animeName} Second Season`,
+    `${animeName} 2`,
+    `${animeName} II`,
+  ];
+  
+  for (const searchQuery of searchVariants) {
+    try {
+      const results = await searchAllAnime(searchQuery, 5);
+      if (!results || results.length === 0) continue;
+      
+      // Find a result that:
+      // 1. Is NOT the same show as Part 1 (different ID)
+      // 2. Has a name that closely matches our search (contains the anime name + part/season indicator)
+      const baseNameLower = animeName.toLowerCase();
+      for (const result of results) {
+        if (result.id === originalShowId) continue; // Skip Part 1 entry
+        
+        const resultNameLower = (result.title || '').toLowerCase();
+        // Must contain the base anime name
+        if (!resultNameLower.includes(baseNameLower) && !baseNameLower.includes(resultNameLower.split(' part')[0].split(' 2nd')[0].split(' second')[0].trim())) {
+          continue;
+        }
+        // Must contain a part/season/cour indicator
+        const hasPartIndicator = /\b(part\s*2|2nd|second|ii|cour\s*2|2)\b/i.test(resultNameLower);
+        if (!hasPartIndicator) continue;
+        
+        // Found a likely Part 2 entry!
+        const adjustedEpisode = episode - availableEpisodes;
+        console.log(`[Part2-Auto] Found "${result.title}" (ID: ${result.id}) for "${animeName}" - adjusted episode: ${adjustedEpisode}`);
+        return { showId: result.id, adjustedEpisode };
+      }
+    } catch (e) {
+      console.error(`[Part2-Auto] Search error for "${searchQuery}":`, e.message);
+    }
+  }
+  
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -6296,21 +6711,67 @@ function extractAnimeNameFromTorrent(title) {
 
 /**
  * Known spinoff/sequel indicators that change the show identity
- * These words after the main title indicate a DIFFERENT show
+ * These words appearing BEFORE or AFTER the main title indicate a DIFFERENT show
+ * Used for both before-match (prefix) and after-match (suffix) detection
+ * 
+ * IMPORTANT: Only include names that indicate a DIFFERENT show, NOT a different season.
+ * Season names like "Second Stage", "2nd Season", "Part 2" are NOT spinoffs —
+ * they're the same show in a different season, handled by validateTorrentEpisode.
+ * Keep entries to 3+ characters to avoid false positive substring matches.
  */
 const SPINOFF_INDICATORS = [
-  'vigilantes', 'vigilante',
+  // Dragon Ball sequels/spinoffs (different shows, not seasons)
   'shippuden', 'shippuuden',
-  'super', 'gt', 'z', 'kai',
-  'zero', 're',
+  'super', 'kai',
+  // Naruto sequels/spinoffs
+  'boruto', 'next generations',
+  // Fullmetal Alchemist
   'brotherhood',
-  'origins', 'origin',
-  'gaiden',
+  // Code Geass
+  'akito the exiled', 'lelouch of the resurrection', 'lelouch of the rebellion',
+  // My Hero Academia
+  'vigilantes', 'vigilante', 'illegals',
+  // Sword Art Online
+  'alicization', 'war of underworld', 'ordinal scale', 'progressive',
+  // Fate series spinoffs
+  'unlimited blade works', 'heaven\'s feel', 'grand order',
+  // ReZero / Re:Zero (spinoff movies/specials)
+  'memory snow',
+  // Story continuations that are different shows
   'after story', 'afterstory',
-  'movie', 'film',
-  'ova', 'ona', 'special', 'specials',
-  'recap',
-  'illegals'
+  'gaiden', 'side story', 'sidestory', 'side stories',
+  'genesis',
+  'the final', 'final chapter',
+  // Content types that indicate different content
+  'movie', 'film', 'gekijouban',
+  'ova', 'ona', 'oav', 'oad',
+  'special', 'specials', 'picture drama',
+  'recap', 'summary', 'compilation',
+  // Specific known spinoff/sequel names
+  'project sekai', 'colorful stage',
+  'chronicle', 'memorial', 'anniversary',
+  // Monogatari sequels (different shows)
+  'bakemonogatari', 'nisemonogatari', 'nekomonogatari',
+  // Attack on Titan spinoffs (different shows, not seasons)
+  'no regrets', 'lost girls', 'junior high',
+  // One Piece spinoffs (movies/specials)
+  'episode of', '3d2y', 'strong world',
+  // Sequel markers
+  'sequel', 'continuation',
+  'resurrection', 'reboot', 'revived', 'rerise',
+  // Madoka spinoffs
+  'magia record', 'magireco',
+  // Gundam spinoffs
+  'iron blooded orphans', 'iron-blooded orphans', 'thunderbolt',
+  // Other known spinoffs
+  'lost song', 'war chronicle',
+  'crimson', 'azure',
+  'awakening', 'beginning', 'dawn',
+  // Anime movie subtitles (these are movies, not TV series)
+  'mugen train', 'infinity castle', 'world heroes', 'two heroes', 'heroes rising',
+  'you\'re next', 'dumpster battle', 'kessen', 'last chapter',
+  // JoJo parts (different seasons/shows)
+  'stardust crusaders', 'diamond is unbreakable', 'golden wind', 'stone ocean', 'steel ball run',
 ];
 
 /**
@@ -6367,12 +6828,12 @@ function scoreShowMatch(torrentTitle, expectedAnimeName, synonyms = []) {
   for (const acceptable of acceptableArray) {
     // Check if extracted name contains an acceptable name
     if (normalizedExtracted.includes(acceptable)) {
-      const afterMatch = normalizedExtracted.substring(
-        normalizedExtracted.indexOf(acceptable) + acceptable.length
-      ).trim();
+      const matchIndex = normalizedExtracted.indexOf(acceptable);
+      const afterMatch = normalizedExtracted.substring(matchIndex + acceptable.length).trim();
+      const beforeMatch = normalizedExtracted.substring(0, matchIndex).trim();
       
-      // Nothing after = almost exact match
-      if (afterMatch.length === 0) {
+      // Nothing before AND nothing after = almost exact match
+      if (beforeMatch.length === 0 && afterMatch.length === 0) {
         if (bestContainmentScore < 98) {
           bestContainmentScore = 98;
           containmentReason = 'contains_exact_end';
@@ -6380,27 +6841,82 @@ function scoreShowMatch(torrentTitle, expectedAnimeName, synonyms = []) {
         continue;
       }
       
-      // Check for spinoff indicators
-      const hasSpinoff = SPINOFF_INDICATORS.some(indicator => 
-        afterMatch.toLowerCase().startsWith(indicator)
-      );
-      
-      if (hasSpinoff) {
-        // This is likely a spinoff - very low score
-        if (bestContainmentScore < 20) {
-          bestContainmentScore = 20;
-          containmentReason = 'spinoff_detected';
+      // ═══ BEFORE-MATCH CHECK (CRITICAL) ═══
+      // If there's a meaningful word BEFORE the matched name, it's likely a DIFFERENT show
+      // e.g., "boruto naruto next generations" — "boruto" before "naruto" = different show
+      if (beforeMatch.length > 0) {
+        const beforeWords = beforeMatch.split(' ').filter(w => w.length > 2);
+        // Use word-boundary matching to avoid false positives from substring matches
+        const hasSpinoffBefore = SPINOFF_INDICATORS.some(indicator => {
+          // For multi-word indicators, check if beforeMatch contains the full phrase
+          if (indicator.includes(' ')) {
+            return beforeMatch.includes(indicator);
+          }
+          // For single words, match against individual words to avoid substring false positives
+          return beforeWords.some(w => w === indicator);
+        });
+        
+        if (hasSpinoffBefore) {
+          // Spinoff/sequel name before the main title = definitely different show
+          if (bestContainmentScore < 15) {
+            bestContainmentScore = 15;
+            containmentReason = 'spinoff_prefix_detected';
+          }
+          continue;
         }
-        continue;
+        
+        // Non-spinoff word before the match — could be a different show entirely
+        // Penalize heavily if beforeMatch has substantial content (more than 3 chars)
+        if (beforeWords.length > 0 && beforeMatch.length > 3) {
+          // The before content is substantial — likely a different show name
+          const beforeRatio = beforeMatch.length / normalizedExtracted.length;
+          if (beforeRatio > 0.2) {
+            // More than 20% of the title is before the match = likely different show
+            if (bestContainmentScore < 25) {
+              bestContainmentScore = 25;
+              containmentReason = 'prefix_mismatch';
+            }
+            continue;
+          }
+        }
       }
       
-      // Has something after but not a spinoff - could be season/metadata remnants
-      // Score based on how much extra content there is
-      const extraRatio = afterMatch.length / normalizedExtracted.length;
-      const containScore = Math.max(70, Math.round(95 - (extraRatio * 30)));
-      if (containScore > bestContainmentScore) {
-        bestContainmentScore = containScore;
-        containmentReason = 'contains_with_extra';
+      // ═══ AFTER-MATCH CHECK (existing, improved) ═══
+      // Check for spinoff indicators after the match
+      if (afterMatch.length > 0) {
+        const afterWords = afterMatch.split(' ').filter(w => w.length > 2);
+        // Use word-boundary matching for single-word indicators
+        const hasSpinoff = SPINOFF_INDICATORS.some(indicator => {
+          if (indicator.includes(' ')) {
+            return afterMatch.toLowerCase().includes(indicator);
+          }
+          return afterWords.some(w => w === indicator) || afterMatch.toLowerCase().startsWith(indicator + ' ');
+        });
+        
+        if (hasSpinoff) {
+          // This is likely a spinoff - very low score
+          if (bestContainmentScore < 20) {
+            bestContainmentScore = 20;
+            containmentReason = 'spinoff_detected';
+          }
+          continue;
+        }
+        
+        // Has something after but not a spinoff - could be season/metadata remnants
+        // Score based on how much extra content there is
+        const extraRatio = afterMatch.length / normalizedExtracted.length;
+        const containScore = Math.max(70, Math.round(95 - (extraRatio * 30)));
+        if (containScore > bestContainmentScore) {
+          bestContainmentScore = containScore;
+          containmentReason = 'contains_with_extra';
+        }
+      } else {
+        // Nothing after, but maybe something before (already checked above)
+        // If we got here, beforeMatch was small/insignificant
+        if (bestContainmentScore < 95) {
+          bestContainmentScore = 95;
+          containmentReason = 'contains_end';
+        }
       }
     }
     
@@ -6745,6 +7261,102 @@ function parseRSSItems(xml) {
 }
 
 /**
+ * Get Japanese season naming conventions for a given season number
+ * Many anime on Nyaa use Japanese naming instead of SXXEXX format
+ * e.g., "Initial D Second Stage" instead of "Initial D S02E01"
+ * @param {number} season - Season number (1-based)
+ * @returns {string[]} Array of Japanese season name variants
+ */
+function getJapaneseSeasonName(season) {
+  const ordinalNames = {
+    1: ['First Stage', '1st Stage', 'First Season', '1st Season', 'I'],
+    2: ['Second Stage', '2nd Stage', 'Second Season', '2nd Season', 'II'],
+    3: ['Third Stage', '3rd Stage', 'Third Season', '3rd Season', 'III'],
+    4: ['Fourth Stage', '4th Stage', 'Fourth Season', '4th Season', 'IV'],
+    5: ['Fifth Stage', '5th Stage', 'Fifth Season', '5th Season', 'V'],
+    6: ['Sixth Stage', '6th Stage', 'Sixth Season', '6th Season', 'VI'],
+    7: ['Seventh Stage', '7th Stage', 'Seventh Season', '7th Season', 'VII'],
+    8: ['Eighth Stage', '8th Stage', 'Eighth Season', '8th Season', 'VIII'],
+  };
+  return ordinalNames[season] || [];
+}
+
+/**
+ * Build sequel/spinoff exclusion terms for Nyaa search queries
+ * Prevents wrong-show results (e.g., Boruto when searching for Naruto)
+ * Only returns terms NOT already present in the search query
+ * @param {string} cleanName - Full cleaned anime name
+ * @param {string} shortName - Shortened anime name
+ * @returns {string[]} Array of exclusion terms (without the - prefix)
+ */
+function buildSequelExclusions(cleanName, shortName) {
+  // Map of base anime name (lowercase) → known sequel/spinoff names to exclude
+  const SEQUEL_MAP = {
+    'naruto': ['boruto', 'shippuden', 'shippuuden'],
+    'dragon ball': ['super', 'gt', 'z kai'],
+    'dragonball': ['super', 'gt', 'z kai'],
+    'fullmetal alchemist': ['brotherhood'],
+    'fma': ['brotherhood'],
+    'code geass': ['akito', 'lelouch of the resurrection'],
+    'sword art online': ['alicization', 'progressive', 'ordinal scale'],
+    'sao': ['alicization', 'progressive', 'ordinal scale'],
+    'attack on titan': ['junior high', 'no regrets', 'lost girls'],
+    'aot': ['junior high', 'no regrets', 'lost girls'],
+    'shingeki no kyojin': ['junior high', 'no regrets', 'lost girls'],
+    'one piece': ['episode of', '3d2y', 'strong world', 'film z', 'film gold', 'stampede'],
+    'my hero academia': ['vigilantes', 'illegals'],
+    'boku no hero academia': ['vigilantes', 'illegals'],
+    'mha': ['vigilantes', 'illegals'],
+    'jojo': ['stardust', 'diamond is unbreakable', 'golden wind', 'stone ocean'],
+    'jojo\'s bizarre adventure': ['stardust', 'diamond is unbreakable', 'golden wind', 'stone ocean'],
+    'fate': ['grand order', 'extra last encore', 'apocrypha'],
+    'initial d': ['second stage', 'third stage', 'fourth stage', 'fifth stage', 'final stage', 'battle stage', 'extra stage'],
+    'gundam': ['thunderbolt', 'iron blooded orphans', 'iron-blooded orphans'],
+    'hunter x hunter': ['greed island', 'phantom rouge', 'the last mission'],
+    'hunter hunter': ['greed island', 'phantom rouge', 'the last mission'],
+    'bleach': ['thousand year blood war', 'tybw'],
+    'demon slayer': ['mugen train', 'hashira training', 'swordsmith village', 'entertainment district'],
+    'kimetsu no yaiba': ['mugen train', 'hashira training', 'swordsmith village', 'entertainment district'],
+    'jujutsu kaisen': ['0', 'shibuya incident'],
+    'one punch man': ['road to hero', 'punch music'],
+    'mob psycho': ['100 reigen', '100 the first'],
+    're zero': ['memory snow', 'starting life'],
+    'rezero': ['memory snow', 'starting life'],
+    'konosuba': ['legend of crimson', 'god\'s blessing'],
+    'overlord': ['ple ple pleiades', 'the undead king'],
+    'slime': ['that time i got reincarnated as', 'tensura'],
+    'tenshi': ['slime', 'tensura'],
+    'boku no hero': ['vigilantes', 'illegals'],
+    'haikyu': ['the dumpster battle', 'vs the garbage dump'],
+    'haikyuu': ['the dumpster battle', 'vs the garbage dump'],
+    'black clover': ['sword of the wizard king', 'qt'],
+    'tokyo revengers': ['christmas showdown', 'tenjiku', 'seka'],
+    'boruto': ['naruto', 'shippuden'],
+    'naruto shippuden': ['boruto'],
+    'naruto shippuuden': ['boruto'],
+  };
+  
+  const nameLower = cleanName.toLowerCase();
+  const shortLower = shortName.toLowerCase();
+  const exclusions = new Set();
+  
+  // Check both full name and short name against the sequel map
+  for (const [baseName, sequels] of Object.entries(SEQUEL_MAP)) {
+    if (nameLower === baseName || shortLower === baseName ||
+        nameLower.startsWith(baseName + ' ') || shortLower.startsWith(baseName + ' ')) {
+      // Don't exclude terms that are already in the search query
+      for (const sequel of sequels) {
+        if (!nameLower.includes(sequel) && !shortLower.includes(sequel)) {
+          exclusions.add(sequel);
+        }
+      }
+    }
+  }
+  
+  return Array.from(exclusions);
+}
+
+/**
  * Scrape RAW anime torrents from Nyaa.si
  * @param {string} animeName - The anime name to search for
  * @param {number} episode - Optional specific episode number
@@ -6790,6 +7402,8 @@ async function scrapeNyaa(animeName, episode = null, season = 1, isMovie = false
     
     // Build search queries based on season
     // For season 1, use simpler queries; for season 2+, include season info
+    // Also include Japanese season naming conventions (e.g., "Second Stage" instead of "S2")
+    const japaneseSeasonNames = getJapaneseSeasonName(season);
     let searchQueries;
     if (season > 1) {
       // Multi-season show - must include season identifier
@@ -6798,6 +7412,10 @@ async function scrapeNyaa(animeName, episode = null, season = 1, isMovie = false
         `${shortName} Season ${season} ${episodeQuery}`.trim(),            // "Season 2 03" format
         `${cleanName} S${paddedSeason}E${paddedEpisode}`.trim(),           // Full name S02E03
       ];
+      // Add Japanese season naming variants (e.g., "Initial D Second Stage 01")
+      for (const jpName of japaneseSeasonNames) {
+        searchQueries.push(`${shortName} ${jpName} ${episodeQuery}`.trim());
+      }
     } else {
       // Season 1 - simpler queries (most anime don't explicitly say S01)
       searchQueries = [
@@ -6805,15 +7423,28 @@ async function scrapeNyaa(animeName, episode = null, season = 1, isMovie = false
         `${cleanName} ${episodeQuery}`.trim(),                              // Full clean name
         `${shortName} S${paddedSeason}E${paddedEpisode}`.trim(),           // Also try S01E03 format
       ];
+      // For season 1, also try "First Stage" variant
+      for (const jpName of japaneseSeasonNames) {
+        searchQueries.push(`${shortName} ${jpName} ${episodeQuery}`.trim());
+      }
     }
     
-    // Remove duplicates
-    const uniqueQueries = [...new Set(searchQueries)].slice(0, 2);
+    // Remove duplicates (limit to 3 queries to avoid too many subrequests)
+    const uniqueQueries = [...new Set(searchQueries)].slice(0, 3);
+    
+    // Build sequel/spinoff exclusion terms to prevent wrong-show results
+    // e.g., searching "Naruto" should exclude "Boruto" results
+    // Only excludes terms NOT already in the search query (so searching "Naruto Shippuden" works)
+    const sequelExclusions = buildSequelExclusions(cleanName, shortName);
     
     for (const query of uniqueQueries) {
+      // Add exclusion terms to query (Nyaa supports -term syntax)
+      const fullQuery = sequelExclusions.length > 0
+        ? `${query} ${sequelExclusions.map(t => `-${t}`).join(' ')}`
+        : query;
       // Category 1_0 = ALL Anime (includes subbed, raw, everything)
       // f=0 = no filter, f=2 = trusted uploaders only
-      const url = `https://nyaa.si/?page=rss&q=${encodeURIComponent(query)}&c=1_0&f=0`;
+      const url = `https://nyaa.si/?page=rss&q=${encodeURIComponent(fullQuery)}&c=1_0&f=0`;
       
       console.log(`[Nyaa] Searching: ${url}`);
       
@@ -6936,6 +7567,8 @@ async function scrapeAnimeTosho(animeName, episode = null, season = 1, isMovie =
     const paddedSeason = String(season).padStart(2, '0');
     
     // Build search queries based on season
+    // Include Japanese season naming conventions (e.g., "Second Stage" instead of "S2")
+    const japaneseSeasonNames = getJapaneseSeasonName(season);
     let searchQueries;
     if (season > 1) {
       // Multi-season show - must include season identifier
@@ -6943,19 +7576,36 @@ async function scrapeAnimeTosho(animeName, episode = null, season = 1, isMovie =
         `${animeName} S${paddedSeason}E${paddedEpisode}`.trim(),      // S02E03 format
         `${animeName} Season ${season} ${paddedEpisode}`.trim(),       // "Season 2 03" format
       ];
+      // Add Japanese season naming variants
+      for (const jpName of japaneseSeasonNames) {
+        searchQueries.push(`${animeName} ${jpName} ${paddedEpisode}`.trim());
+      }
     } else {
       // Season 1 - simpler queries
       searchQueries = [
         `${animeName} ${paddedEpisode}`.trim(),                        // Simple: "Anime 03"
         `${animeName} S${paddedSeason}E${paddedEpisode}`.trim(),      // Also try S01E03
       ];
+      // Add "First Stage" variant
+      for (const jpName of japaneseSeasonNames) {
+        searchQueries.push(`${animeName} ${jpName} ${paddedEpisode}`.trim());
+      }
     }
     
-    // Remove duplicates and empty queries
-    const uniqueQueries = [...new Set(searchQueries.filter(q => q.length > 0))];
+    // Remove duplicates and empty queries (limit to 3)
+    const uniqueQueries = [...new Set(searchQueries.filter(q => q.length > 0))].slice(0, 3);
+    
+    // Build sequel/spinoff exclusion terms (same as Nyaa)
+    const cleanNameForExcl = animeName.replace(/[:'!?""'']/g, '').replace(/\s+/g, ' ').trim();
+    const shortNameForExcl = cleanNameForExcl.split(/[:-]/)[0].replace(/^The\s+/i, '').trim();
+    const sequelExclusions = buildSequelExclusions(cleanNameForExcl, shortNameForExcl);
     
     for (const query of uniqueQueries) {
-      const url = `https://feed.animetosho.org/rss2?q=${encodeURIComponent(query)}&filter[0][t]=nyaa_class&filter[0][v]=trusted`;
+      // Add exclusion terms to query
+      const fullQuery = sequelExclusions.length > 0
+        ? `${query} ${sequelExclusions.map(t => `-${t}`).join(' ')}`
+        : query;
+      const url = `https://feed.animetosho.org/rss2?q=${encodeURIComponent(fullQuery)}&filter[0][t]=nyaa_class&filter[0][v]=trusted`;
     
       console.log(`[AnimeTosho] Searching: ${url}`);
     
@@ -7309,6 +7959,48 @@ async function getTorrentStreams(anime, episode = null, season = 1, contentType 
         seen.add(torrent.infoHash);
         combined.push(torrent);
       }
+    }
+  }
+  
+  // ═══ MAX SIZE FILTER ═══
+  // Filter out unreasonably large torrents for single-episode requests
+  // This prevents 100GB+ full-series batches from appearing when user wants one episode
+  // Limits: single episode = 20GB, movie = 60GB, batch/no-episode = no limit
+  if (!isMovie && episode) {
+    const MAX_SINGLE_EPISODE_SIZE_MB = 20 * 1024; // 20 GB
+    const beforeSizeFilter = combined.length;
+    const sizeFiltered = combined.filter(t => {
+      if (!t.size) return true; // Keep if no size info
+      const sizeMB = parseSizeToMB(t.size);
+      if (sizeMB <= 0) return true; // Keep if can't parse
+      if (sizeMB > MAX_SINGLE_EPISODE_SIZE_MB) {
+        console.log(`[TorrentStreams] Filtered out oversized torrent: ${t.size} "${t.title.substring(0, 60)}..."`);
+        return false;
+      }
+      return true;
+    });
+    combined.length = 0;
+    combined.push(...sizeFiltered);
+    if (combined.length !== beforeSizeFilter) {
+      console.log(`[TorrentStreams] Size filter: ${beforeSizeFilter} → ${combined.length} (max ${MAX_SINGLE_EPISODE_SIZE_MB}MB for single episode)`);
+    }
+  } else if (isMovie) {
+    const MAX_MOVIE_SIZE_MB = 60 * 1024; // 60 GB
+    const beforeSizeFilter = combined.length;
+    const sizeFiltered = combined.filter(t => {
+      if (!t.size) return true;
+      const sizeMB = parseSizeToMB(t.size);
+      if (sizeMB <= 0) return true;
+      if (sizeMB > MAX_MOVIE_SIZE_MB) {
+        console.log(`[TorrentStreams] Filtered out oversized movie torrent: ${t.size} "${t.title.substring(0, 60)}..."`);
+        return false;
+      }
+      return true;
+    });
+    combined.length = 0;
+    combined.push(...sizeFiltered);
+    if (combined.length !== beforeSizeFilter) {
+      console.log(`[TorrentStreams] Size filter: ${beforeSizeFilter} → ${combined.length} (max ${MAX_MOVIE_SIZE_MB}MB for movie)`);
     }
   }
   
@@ -8937,15 +9629,38 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
   // Episode bounds validation - prevent requesting wrong episodes
   // ONLY apply for non-merged shows where availableEpisodes is reliable (per-season)
   // For merged shows, availableEpisodes from AllAnime doesn't match our absolute numbering
-  if (!isMergedShow && availableEpisodes && episode > availableEpisodes) {
-    console.log(`Episode ${episode} exceeds available episodes (${availableEpisodes}) for ${anime?.name || baseId}`);
-    return { 
-      streams: [{
-        name: 'AnimeStream',
-        title: `⚠️ Episode ${episode} not available yet (${availableEpisodes} released)`,
-        externalUrl: 'https://stremio.com'
-      }]
-    };
+  // BUT: skip this check if we already have a Part 2 mapping (the episode count is for Part 1 only)
+  if (!isMergedShow && availableEpisodes && episode > availableEpisodes && !part2Mapping) {
+    // Try automatic Part 2 detection before giving up
+    // Many split-cour shows aren't in the manual PART2_MAPPINGS
+    const animeNameForSearch = anime?.name || anime?.title?.userPreferred || '';
+    if (animeNameForSearch) {
+      const autoPart2 = await tryAutoPart2Detection(animeNameForSearch, showId, episode, availableEpisodes, season);
+      if (autoPart2) {
+        console.log(`[Part2-Auto] Found Part 2 entry: ${autoPart2.showId}, adjusted episode: ${autoPart2.adjustedEpisode}`);
+        showId = autoPart2.showId;
+        absoluteEpisode = autoPart2.adjustedEpisode;
+        // Skip the "not available" error since we found a Part 2 entry
+      } else {
+        console.log(`Episode ${episode} exceeds available episodes (${availableEpisodes}) for ${anime?.name || baseId}`);
+        return { 
+          streams: [{
+            name: 'AnimeStream',
+            title: `⚠️ Episode ${episode} not available yet (${availableEpisodes} released)`,
+            externalUrl: 'https://stremio.com'
+          }]
+        };
+      }
+    } else {
+      console.log(`Episode ${episode} exceeds available episodes (${availableEpisodes}) for ${anime?.name || baseId}`);
+      return { 
+        streams: [{
+          name: 'AnimeStream',
+          title: `⚠️ Episode ${episode} not available yet (${availableEpisodes} released)`,
+          externalUrl: 'https://stremio.com'
+        }]
+      };
+    }
   }
   
   // Fetch streams directly from AllAnime API
@@ -8959,7 +9674,21 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
     // Add AllAnime streams (hardsubbed) - only if HTTPS streams are enabled
     // Use absoluteEpisode which is already correctly calculated for both merged and season-split shows
     if (includeHttps) {
-      const streams = await getEpisodeSources(showId, absoluteEpisode);
+      let streams = await getEpisodeSources(showId, absoluteEpisode);
+      
+      // Fallback: if no streams found and we haven't already tried Part 2, attempt auto-detection
+      // This handles split-cour shows where availableEpisodes wasn't accurate
+      if ((!streams || streams.length === 0) && !part2Mapping && availableEpisodes && episode > availableEpisodes) {
+        const animeNameForFallback = anime?.name || anime?.title?.userPreferred || '';
+        if (animeNameForFallback) {
+          console.log(`[Part2-Auto] No streams for E${absoluteEpisode}, trying auto Part 2 detection...`);
+          const autoPart2 = await tryAutoPart2Detection(animeNameForFallback, showId, episode, availableEpisodes, season);
+          if (autoPart2) {
+            console.log(`[Part2-Auto] Retrying with Part 2 show ID: ${autoPart2.showId}, episode: ${autoPart2.adjustedEpisode}`);
+            streams = await getEpisodeSources(autoPart2.showId, autoPart2.adjustedEpisode);
+          }
+        }
+      }
       
       // Format streams for Stremio - use proxy for URLs requiring Referer header
       // NOTE: workerBaseUrl is now defined at the top of handleStream
@@ -9001,14 +9730,40 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
       console.log(`[Stream] Torrent search: E${torrentAbsoluteEpisode} (absolute) / S${season}E${episode} (seasonal)`);
       let torrents = await getTorrentStreams(enrichedAnime, torrentAbsoluteEpisode, season, type === 'movie' ? 'movie' : null, episode);
       
-      // Apply user torrent preferences filters (min seeders, min size)
+      // Apply user torrent preferences filters (min seeders, min size, audio type, quality)
       const torrentPrefs = config.torrentPrefs || [];
       const minSeedersMatch = torrentPrefs.find(p => p.startsWith('s_'));
       const minSizeMatch = torrentPrefs.find(p => p.startsWith('sz_'));
       
-      if (minSeedersMatch || minSizeMatch) {
+      // Audio type preferences (a_raw, a_sub, a_dub, a_dual)
+      const audioPrefs = torrentPrefs.filter(p => p.startsWith('a_'));
+      // Quality preferences (q_4k, q_1080, q_720, q_480)
+      const qualityPrefs = torrentPrefs.filter(p => p.startsWith('q_'));
+      
+      if (minSeedersMatch || minSizeMatch || audioPrefs.length > 0 || qualityPrefs.length > 0) {
         const minSeeders = minSeedersMatch ? parseInt(minSeedersMatch.replace('s_', '')) : 0;
         const minSizeMB = minSizeMatch ? parseInt(minSizeMatch.replace('sz_', '')) : 0;
+        
+        // Build allowed audio types set
+        const allowedAudioTypes = new Set();
+        if (audioPrefs.length > 0) {
+          for (const pref of audioPrefs) {
+            const type = pref.replace('a_', '').toUpperCase();
+            allowedAudioTypes.add(type);
+          }
+        }
+        
+        // Build allowed qualities set
+        const allowedQualities = new Set();
+        if (qualityPrefs.length > 0) {
+          for (const pref of qualityPrefs) {
+            const q = pref.replace('q_', '');
+            if (q === '4k') allowedQualities.add('4K');
+            else if (q === '1080') allowedQualities.add('1080p');
+            else if (q === '720') allowedQualities.add('720p');
+            else if (q === '480') allowedQualities.add('480p');
+          }
+        }
         
         const beforeCount = torrents.length;
         torrents = torrents.filter(t => {
@@ -9023,11 +9778,24 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
               return false;
             }
           }
+          // Check audio type (if preferences set)
+          if (allowedAudioTypes.size > 0) {
+            const audioType = getAudioType(t.title, t.isRaw);
+            if (!allowedAudioTypes.has(audioType)) {
+              return false;
+            }
+          }
+          // Check quality (if preferences set)
+          if (allowedQualities.size > 0) {
+            if (!allowedQualities.has(t.quality)) {
+              return false;
+            }
+          }
           return true;
         });
         
         if (torrents.length !== beforeCount) {
-          console.log(`[Stream] Filtered torrents by prefs: ${beforeCount} → ${torrents.length} (minSeeders=${minSeeders}, minSizeMB=${minSizeMB})`);
+          console.log(`[Stream] Filtered torrents by prefs: ${beforeCount} → ${torrents.length} (minSeeders=${minSeeders}, minSizeMB=${minSizeMB}, audio=[${Array.from(allowedAudioTypes).join(',')}], quality=[${Array.from(allowedQualities).join(',')}])`);
         }
       }
       
@@ -9039,6 +9807,7 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
         
         // Batch check cache status for all torrents (if debrid configured)
         let cacheStatus = new Map();
+        let debridCheckFailed = false;
         if (hasDebrid) {
           const topTorrents = torrents.slice(0, 15);
           const hashes = topTorrents.map(t => t.infoHash).filter(Boolean);
@@ -9046,9 +9815,16 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
             try {
               cacheStatus = await checkDebridCacheBatch(hashes, config.debridProvider, config.debridApiKey);
               const cachedCount = Array.from(cacheStatus.values()).filter(v => v === true).length;
-              console.log(`[Stream] Cache check: ${cachedCount}/${hashes.length} torrents cached on ${config.debridProvider}`);
+              const nullCount = Array.from(cacheStatus.values()).filter(v => v === null).length;
+              console.log(`[Stream] Cache check: ${cachedCount}/${hashes.length} cached, ${nullCount} unknown on ${config.debridProvider}`);
+              // If ALL results are null, the API key is likely invalid
+              if (nullCount === hashes.length) {
+                debridCheckFailed = true;
+                console.error(`[Stream] All debrid cache checks returned null - API key may be invalid for ${config.debridProvider}`);
+              }
             } catch (cacheErr) {
               console.error(`[Stream] Cache check error: ${cacheErr.message}`);
+              debridCheckFailed = true;
             }
           }
         }
@@ -9098,6 +9874,7 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
             const hashLower = torrent.infoHash?.toLowerCase();
             const isCached = cacheStatus.has(hashLower) ? cacheStatus.get(hashLower) : null;
             // ⚡ = cached (instant), ⏳ = not cached (will download), ❓ = unknown/error
+            // When ❓ appears for ALL torrents, it usually means the debrid API key is invalid
             const cacheEmoji = isCached === true ? '⚡' : isCached === false ? '⏳' : '❓';
             
             // Build title: "AnimeName - 1080p HEVC [DUB]\n👤 32 💾 542.13 MB 🔊 DUB"
@@ -9143,6 +9920,15 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
     }
     } // End of includeTorrents check
     
+    // Add warning if debrid API key appears invalid
+    if (debridCheckFailed && hasDebrid) {
+      formattedStreams.push({
+        name: '⚠️ AnimeStream',
+        title: `Debrid API check failed for ${config.debridProvider}. Please verify your API key in addon settings.`,
+        externalUrl: 'https://stremio.com'
+      });
+    }
+    
     if (formattedStreams.length === 0) {
       return { streams: [] };
     }
@@ -9158,6 +9944,10 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
 
 export default {
   async fetch(request, env, ctx) {
+    // Set global env/ctx references for KV cache helpers
+    __ENV = env;
+    __CTX = ctx;
+    
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS_HEADERS });
@@ -9518,13 +10308,13 @@ export default {
           catalogResult = handleTopRated(catalog, extra.genre, config);
           break;
         case 'anime-season-releases':
-          catalogResult = handleSeasonReleases(catalog, extra.genre);
+          catalogResult = handleSeasonReleases(catalog, extra.genre, config);
           break;
         case 'anime-airing':
           catalogResult = handleAiring(catalog, extra.genre, config);
           break;
         case 'anime-movies':
-          catalogResult = handleMovies(catalog, extra.genre);
+          catalogResult = handleMovies(catalog, extra.genre, config);
           break;
         default:
           // Handle user list catalogs (AniList and MAL)

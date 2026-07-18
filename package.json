@@ -15,7 +15,8 @@
     "bulk-enrich": "node scripts/bulk-enrich-database.js",
     "bulk-enrich:dry": "node scripts/bulk-enrich-database.js --dry-run",
     "bulk-enrich:missing": "node scripts/bulk-enrich-database.js --missing-only",
-    "update-filters": "node scripts/update-filter-options.js"
+    "update-filters": "node scripts/update-filter-options.js",
+    "upload-kv": "node cloudflare-worker/upload-to-kv.js"
   },
   "keywords": [
     "stremio",

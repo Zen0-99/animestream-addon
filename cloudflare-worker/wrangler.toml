@@ -10,4 +10,9 @@ ENVIRONMENT = "production"
 [[kv_namespaces]]
 binding = "USER_TOKENS"
 id = "928dc36173b84dd8bee471aecaf69a8d"
-    
+
+# KV namespace for catalog data + API response caching (reduces subrequests to external APIs)
+# Keys: catalog:v{N}, filters:v{N}, mappings:v{N}, aa:streams:*, aa:search:*, aa:details:*, cm:meta:*, hl:ids:*, hl:imdb:*
+[[kv_namespaces]]
+binding = "API_CACHE"
+id = "cd4c8644874547f18a077cc646eda3d6"

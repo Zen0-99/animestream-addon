@@ -71,4 +71,5 @@ if (parseFloat(fileSizeMB) > maxSizeMB) {
 
 console.log('\nTo deploy:');
 console.log('  cd cloudflare-worker');
+console.log('  node upload-to-kv.js    # Upload catalog data to KV (first time only)');
 console.log('  npx wrangler deploy');
