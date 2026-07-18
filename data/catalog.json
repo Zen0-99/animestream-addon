@@ -379613,7 +379613,7 @@
       ],
       "_matchSource": "imdb_exact",
       "countryOfOrigin": "JP",
-      "broadcastDay": "Sunday",
+      "broadcastDay": "Saturday",
       "episodes": 51
     },
     {
@@ -381667,7 +381667,7 @@
       "studios": [
         "Lesprit"
       ],
-      "broadcastDay": "Sunday",
+      "broadcastDay": "Saturday",
       "animeType": "TV",
       "subtype": "tv",
       "countryOfOrigin": "JP"
