@@ -8653,6 +8653,129 @@ async function scrapeNyaaWithSynonyms(synonyms, episode = null, season = 1, isMo
 }
 
 /**
+ * Fetch torrents from TorrentsDB API.
+ * TorrentsDB is a Stremio addon that aggregates from Nyaa, AnimeTosho, and other providers.
+ * It already does episode matching and returns fileIdx for debrid resolution.
+ *
+ * API: https://torrentsdb.com/stream/{type}/{imdb_id}:{season}:{episode}.json
+ *
+ * @param {string} baseId - IMDB ID (e.g. "tt5626028")
+ * @param {number} season - Season number
+ * @param {number} episode - Episode number
+ * @param {string} type - 'movie' or 'series'
+ * @returns {Promise<Array>} Torrent objects in the same format as getTorrentStreams
+ */
+async function fetchTorrentsDB(baseId, season, episode, type) {
+  try {
+    // TorrentsDB only works with IMDB IDs
+    if (!baseId?.startsWith('tt')) {
+      console.log('[TorrentsDB] Skipping - no IMDB ID');
+      return [];
+    }
+
+    // Check cache first (5 min TTL - torrent sources don't change fast)
+    const cacheKey = `tdb:${baseId}:${season}:${episode}:${type}`;
+    const cached = await kvCacheGet(cacheKey);
+    if (cached) {
+      console.log(`[TorrentsDB] Cache hit: ${cached.length} torrents`);
+      return cached;
+    }
+
+    const mediaType = type === 'movie' ? 'movie' : 'series';
+    const url = mediaType === 'movie'
+      ? `https://torrentsdb.com/stream/movie/${baseId}.json`
+      : `https://torrentsdb.com/stream/series/${baseId}:${season}:${episode}.json`;
+
+    console.log(`[TorrentsDB] Fetching: ${url.substring(0, 80)}...`);
+    const r = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(10000), // 10s timeout
+    });
+
+    if (!r.ok) {
+      console.log(`[TorrentsDB] HTTP ${r.status}`);
+      return [];
+    }
+
+    const data = await r.json();
+    const rawStreams = data.streams || [];
+    console.log(`[TorrentsDB] Got ${rawStreams.length} streams`);
+
+    const torrents = [];
+    for (const s of rawStreams) {
+      if (!s.infoHash) continue;
+
+      // Parse the title to extract metadata
+      // Format: "ReleaseName | AnimeName\nFilepath\n📅 S01E01 👤 420 💾 3.37 GB ⚙️ nyaa"
+      const titleLines = (s.title || '').split('\n');
+      const releaseTitle = titleLines[0] || '';
+      const metadataLine = titleLines[titleLines.length - 1] || '';
+
+      // Extract seeders from "👤 420"
+      const seedersMatch = metadataLine.match(/👤\s*(\d+)/);
+      const seeders = seedersMatch ? parseInt(seedersMatch[1]) : 0;
+
+      // Extract size from "💾 3.37 GB" or "💾 311.49 MB"
+      const sizeMatch = metadataLine.match(/💾\s*([\d.]+)\s*(KB|MB|GB|TB)/i);
+      let size = null;
+      if (sizeMatch) {
+        size = `${sizeMatch[1]} ${sizeMatch[2]}`;
+      }
+
+      // Extract tracker from "⚙️ nyaa"
+      const trackerMatch = metadataLine.match(/⚙️\s*(\w+)/);
+      const tracker = trackerMatch ? trackerMatch[1] : 'unknown';
+
+      // Extract quality from the name field (e.g. "TorrentsDB\n1080p")
+      const nameParts = (s.name || '').split('\n');
+      const qualityStr = nameParts[1] || '';
+      let quality = 'Unknown';
+      if (/4k|2160p/i.test(qualityStr)) quality = '4K';
+      else if (/1080p?/i.test(qualityStr)) quality = '1080p';
+      else if (/720p?/i.test(qualityStr)) quality = '720p';
+      else if (/480p?/i.test(qualityStr)) quality = '480p';
+      else if (/4k|2160p/i.test(releaseTitle)) quality = '4K';
+      else if (/1080p?/i.test(releaseTitle)) quality = '1080p';
+      else if (/720p?/i.test(releaseTitle)) quality = '720p';
+      else if (/480p?/i.test(releaseTitle)) quality = '480p';
+
+      // Determine audio type
+      const isRaw = /\b(raw|raws)\b/i.test(releaseTitle) && !/dual|dub|eng/i.test(releaseTitle);
+      const isDual = /dual[ -]?audio/i.test(releaseTitle);
+      const isDub = /\b(dub|dubbed|eng(?:lish)?(?:[ -]?dub)?)\b/i.test(releaseTitle) && !isDual;
+
+      // Get filename from behaviorHints if available
+      const filename = s.behaviorHints?.filename || releaseTitle;
+
+      torrents.push({
+        infoHash: s.infoHash.toLowerCase(),
+        title: releaseTitle,
+        seeders,
+        size,
+        quality,
+        isRaw,
+        isDual,
+        isDub,
+        fileIndex: s.fileIdx ?? null,
+        filename,
+        tracker,
+        source: 'torrentsdb',
+      });
+    }
+
+    console.log(`[TorrentsDB] Parsed ${torrents.length} valid torrents`);
+    // Cache results for 5 minutes
+    if (torrents.length > 0) {
+      kvCachePut(cacheKey, torrents, 300);
+    }
+    return torrents;
+  } catch (e) {
+    console.log('[TorrentsDB] Error:', e.message);
+    return [];
+  }
+}
+
+/**
  * Get all torrent results for an anime (from multiple sources)
  * Enhanced version that uses AniDB ID for accurate results when available
  * 
@@ -10580,7 +10703,14 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
       // Pass both absolute episode (for torrents like "One Piece 936") and seasonal episode (for "S21E45" patterns)
       console.log(`[Stream] Enriched anime: anidb_id=${enrichedAnime.anidb_id}, mal_id=${enrichedAnime.mal_id}, synonyms=${enrichedAnime.synonyms?.length || 0}`);
       console.log(`[Stream] Torrent search: E${torrentAbsoluteEpisode} (absolute) / S${season}E${episode} (seasonal)`);
-      let torrents = await getTorrentStreams(enrichedAnime, torrentAbsoluteEpisode, season, type === 'movie' ? 'movie' : null, episode);
+      
+      // Try TorrentsDB first (aggregates Nyaa, AnimeTosho, and more with pre-matched episodes)
+      // Falls back to direct Nyaa/AnimeTosho scraping if TorrentsDB returns nothing
+      let torrents = await fetchTorrentsDB(baseId, season, episode, type);
+      if (torrents.length === 0) {
+        console.log(`[Stream] TorrentsDB returned 0, falling back to Nyaa/AnimeTosho scraping`);
+        torrents = await getTorrentStreams(enrichedAnime, torrentAbsoluteEpisode, season, type === 'movie' ? 'movie' : null, episode);
+      }
       
       // Apply user torrent preferences filters (min seeders, min size, audio type, quality)
       const torrentPrefs = config.torrentPrefs || [];
