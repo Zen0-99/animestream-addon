@@ -2312,6 +2312,36 @@ const CONFIGURE_HTML = `<!doctype html>
 const ALLANIME_API = 'https://api.allanime.day/api';
 const ALLANIME_BASE = 'https://allanime.to';
 
+// ===== ROTATING PROXY POOL for AllAnime API =====
+// AllAnime rate-limits by egress IP (Cloudflare edge IP). When multiple users
+// hit the worker simultaneously, they share the same egress IP and get 429s.
+// Proxy workers (deployed on SEPARATE Cloudflare accounts) each exit through
+// a different edge IP, distributing the load.
+//
+// Configure via environment variable PROXY_URLS (comma-separated):
+//   PROXY_URLS=https://proxy1.other-acct.workers.dev,https://proxy2.other-acct.workers.dev
+//
+// Each proxy worker should accept ?url=<encoded-target> and forward to AllAnime.
+// See cloudflare-worker/proxy-worker.js for the proxy worker script.
+//
+// IMPORTANT: Proxy workers MUST be on a different Cloudflare account than the
+// main worker. Same-account worker-to-worker fetch returns error 1042.
+let _proxyUrls = null;
+let _proxyIndex = 0;
+function getProxyUrls() {
+  if (_proxyUrls !== null) return _proxyUrls;
+  const raw = typeof PROXY_URLS !== 'undefined' ? PROXY_URLS : '';
+  _proxyUrls = raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
+  return _proxyUrls;
+}
+function nextProxyUrl() {
+  const urls = getProxyUrls();
+  if (urls.length === 0) return null;
+  const url = urls[_proxyIndex % urls.length];
+  _proxyIndex++;
+  return url;
+}
+
 // ===== ALLANIME CRYPTO (aaReq token for episode source queries) =====
 // AllAnime now requires AES-GCM signed tokens for the episode endpoint.
 // The crypto values (epoch, partB) are fetched from mkissa.to, the mask and
@@ -3114,7 +3144,8 @@ async function getEpisodeSources(showId, episode) {
   for (const translationType of ['sub', 'dub']) {
     let success = false;
     // Retry on rate-limit errors (AllAnime shares IP across all worker users)
-    for (let attempt = 1; attempt <= 3 && !success; attempt++) {
+    // Strategy: try direct first, then rotate through proxy workers on rate-limit
+    for (let attempt = 1; attempt <= 4 && !success; attempt++) {
       try {
         // AllAnime now requires a GET request with persisted query hash + aaReq token
         const variables = JSON.stringify({
@@ -3128,18 +3159,38 @@ async function getEpisodeSources(showId, episode) {
         });
 
         const apiUrl = `${ALLANIME_API}?variables=${encodeURIComponent(variables)}&extensions=${encodeURIComponent(extensions)}`;
-        const response = await fetch(apiUrl, {
+
+        // On retry attempts (attempt > 1), try via a proxy worker to get a different egress IP
+        let fetchUrl = apiUrl;
+        let fetchOpts = {
           method: 'GET',
           headers: {
             'User-Agent': AA_CRYPTO_UA,
             'Accept': 'application/json, text/plain, */*',
             'Referer': 'https://youtu-chan.com/',
           },
-        });
+        };
+
+        const proxyUrl = nextProxyUrl();
+        if (attempt > 1 && proxyUrl) {
+          // Route through proxy worker: proxy?url=<encoded-api-url>
+          fetchUrl = `${proxyUrl}?url=${encodeURIComponent(apiUrl)}`;
+          // Proxy worker sets its own headers, so we don't need them here
+          fetchOpts = { method: 'GET' };
+          console.log(`[AaStreams] ${translationType} attempt ${attempt} via proxy: ${proxyUrl.substring(0, 40)}...`);
+        }
+
+        const response = await fetch(fetchUrl, fetchOpts);
 
         if (!response.ok) {
-          console.log(`[AaStreams] ${translationType} response not ok: ${response.status}`);
-          if (response.status === 429 && attempt < 3) {
+          console.log(`[AaStreams] ${translationType} response not ok: ${response.status} (attempt ${attempt})`);
+          if (response.status === 429 && attempt < 4) {
+            // Try next attempt (will use a proxy if available, or retry direct with delay)
+            if (attempt === 1) {
+              // First 429: try proxy immediately if available (no delay)
+              if (getProxyUrls().length > 0) continue;
+            }
+            // No proxies or subsequent retries: exponential backoff
             await sleep(2000 * attempt);
             continue;
           }
@@ -3162,8 +3213,13 @@ async function getEpisodeSources(showId, episode) {
           const errMsg = JSON.stringify(data.errors).substring(0, 200);
           console.log(`[AaStreams] ${translationType} API errors:`, errMsg);
           // Check for rate-limit error in GraphQL errors
-          if (errMsg.includes('Too many requests') && attempt < 3) {
-            console.log(`[AaStreams] ${translationType} rate-limited, retrying in ${2000 * attempt}ms (attempt ${attempt}/3)`);
+          if (errMsg.includes('Too many requests') && attempt < 4) {
+            // Try proxy on first 429 if available
+            if (attempt === 1 && getProxyUrls().length > 0) {
+              console.log(`[AaStreams] ${translationType} rate-limited, trying proxy (attempt ${attempt}/4)`);
+              continue;
+            }
+            console.log(`[AaStreams] ${translationType} rate-limited, retrying in ${2000 * attempt}ms (attempt ${attempt}/4)`);
             await sleep(2000 * attempt);
             continue;
           }
