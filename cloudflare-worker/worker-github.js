@@ -54,7 +54,7 @@ const KV_TTL = {
   CATALOG: 0,          // No TTL - catalog is versioned via key (catalog:v15), updated manually
   FILTERS: 0,          // Same as catalog - versioned key
   MAPPINGS: 0,         // Same as catalog - versioned key
-  AA_STREAMS: 300,     // 5 minutes - stream sources change frequently
+  AA_STREAMS: 120,     // 2 minutes - stream URLs expire quickly (fast4speed tokens)
   AA_SEARCH: 1800,     // 30 minutes - search results are relatively stable
   AA_DETAILS: 3600,    // 1 hour - show details (episode counts) change occasionally
   CINEMETA: 3600,      // 1 hour - metadata/episode lists rarely change
@@ -64,6 +64,7 @@ const KV_TTL = {
 // In-memory cache for KV reads to avoid repeated KV lookups within the same worker instance.
 // This is a second layer of caching on top of KV.
 const kvMemoryCache = new Map();
+const kvMemoryCacheExpiry = new Map(); // key -> expiry timestamp (ms)
 const MAX_KV_MEMORY_CACHE = 500;
 
 /**
@@ -73,9 +74,16 @@ const MAX_KV_MEMORY_CACHE = 500;
  */
 async function kvCacheGet(key) {
   // Check in-memory cache first (avoids KV read billing)
-  const memCached = kvMemoryCache.get(key);
-  if (memCached !== undefined) {
-    return memCached;
+  // But respect TTL for entries that have an expiry
+  const expiry = kvMemoryCacheExpiry.get(key);
+  if (expiry !== undefined && Date.now() > expiry) {
+    kvMemoryCache.delete(key);
+    kvMemoryCacheExpiry.delete(key);
+  } else {
+    const memCached = kvMemoryCache.get(key);
+    if (memCached !== undefined) {
+      return memCached;
+    }
   }
 
   if (!__ENV?.API_CACHE) return null;
@@ -84,12 +92,14 @@ async function kvCacheGet(key) {
     const raw = await __ENV.API_CACHE.get(key, 'json');
     if (raw === null) {
       // Cache null result too (negative caching) to avoid repeated KV lookups
-      // but use a short-lived entry
+      // but use a short-lived entry (60s)
       if (kvMemoryCache.size >= MAX_KV_MEMORY_CACHE) {
         const oldestKey = kvMemoryCache.keys().next().value;
         kvMemoryCache.delete(oldestKey);
+        kvMemoryCacheExpiry.delete(oldestKey);
       }
       kvMemoryCache.set(key, null);
+      kvMemoryCacheExpiry.set(key, Date.now() + 60000);
     }
     return raw;
   } catch (e) {
@@ -111,8 +121,13 @@ function kvCachePut(key, value, ttl = 0, ctx = null) {
   if (kvMemoryCache.size >= MAX_KV_MEMORY_CACHE) {
     const oldestKey = kvMemoryCache.keys().next().value;
     kvMemoryCache.delete(oldestKey);
+    kvMemoryCacheExpiry.delete(oldestKey);
   }
   kvMemoryCache.set(key, value);
+  // Track TTL in memory so stale entries are evicted (KV TTL doesn't apply to in-memory)
+  if (ttl > 0) {
+    kvMemoryCacheExpiry.set(key, Date.now() + ttl * 1000);
+  }
 
   if (!__ENV?.API_CACHE) return;
 
@@ -3124,6 +3139,7 @@ async function extractMp4Upload(url) {
       const resolution = html.match(/HEIGHT=(\d+)/);
       return { url: srcMatch[1], quality: resolution ? `${resolution[1]}p` : 'MP4Upload' };
     }
+    console.log('[Mp4Upload] No video found, page length:', html.length, 'has eval:', html.includes('eval(function'), 'has player.src:', html.includes('player.src'));
     return null;
   } catch (e) {
     console.log('[Mp4Upload] Error:', e.message);
@@ -3258,10 +3274,30 @@ async function extractGeneric(url) {
  */
 async function extractOkRu(url) {
   try {
-    const r = await fetch(url, {
-      headers: { 'User-Agent': AA_CRYPTO_UA },
+    // OK.ru embed pages (/videoembed/) don't always have data-options.
+    // The /video/ page has more data. Try both.
+    const videoId = url.match(/\/(?:videoembed|video)\/(\d+)/)?.[1];
+    
+    // Try embed page first
+    let r = await fetch(url, {
+      headers: { 'User-Agent': AA_CRYPTO_UA, 'Accept': 'text/html' },
     });
-    const html = await r.text();
+    let html = await r.text();
+    
+    // If embed page is too small or lacks data, try the full video page
+    if (html.length < 500 || (!html.includes('data-options') && !html.includes('m3u8') && !html.includes('mp4'))) {
+      if (videoId) {
+        const videoPageUrl = `https://ok.ru/video/${videoId}`;
+        const r2 = await fetch(videoPageUrl, {
+          headers: { 'User-Agent': AA_CRYPTO_UA, 'Accept': 'text/html' },
+        });
+        const html2 = await r2.text();
+        if (html2.length > html.length) {
+          html = html2;
+        }
+      }
+    }
+    
     if (html.length < 100) return null;
 
     // Find data-options attribute
@@ -3280,8 +3316,11 @@ async function extractOkRu(url) {
       const dashMatch = decoded.match(/ondemandDash\\":\\"([^"\\]+)/);
       if (dashMatch) return { url: dashMatch[1], quality: 'OK.ru DASH' };
 
-      // Try direct video URLs from JSON
-      const videos = [...decoded.matchAll(/\\?"url\\?":\\?"([^"\\]+)"/g)].map(m => m[1]);
+      // Try direct video URLs from JSON - filter to only video CDN URLs
+      // Exclude st.okcdn.ru (static assets like SWF player) - only match vdXXX.okcdn.ru or video file extensions
+      const videos = [...decoded.matchAll(/\\?"url\\?":\\?"([^"\\]+)"/g)]
+        .map(m => m[1])
+        .filter(u => /vd\d+\.okcdn\.ru|\.mp4|\.m3u8|\.mpd/i.test(u));
       if (videos.length > 0) {
         // Pick highest quality (last in list, as OK.ru lists low to high)
         return { url: videos[videos.length - 1], quality: 'OK.ru' };
@@ -3295,6 +3334,19 @@ async function extractOkRu(url) {
     const mp4Match = html.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
     if (mp4Match) return { url: mp4Match[1], quality: 'OK.ru' };
 
+    // Fallback: search for HLS URLs in data-options with different encoding
+    const hlsInJson = html.match(/"hls"\s*:\s*"(https?:\/\/[^"]+)"/);
+    if (hlsInJson) return { url: hlsInJson[1], quality: 'OK.ru HLS' };
+
+    // Search for OK.ru CDN URLs (vdXXX.okcdn.ru/expires/...) - these are HLS streams
+    const okcdnMatch = html.match(/(https?:\/\/vd\d+\.okcdn\.ru\/[^\s"'<>]+)/);
+    if (okcdnMatch) return { url: okcdnMatch[1], quality: 'OK.ru HLS' };
+
+    // Search for video URLs in JSON blocks - only actual video files
+    const urlInJson = html.match(/"url"\s*:\s*"(https?:\/\/[^"]+\.(?:mp4|m3u8|mpd)[^"]*)"/);
+    if (urlInJson) return { url: urlInJson[1], quality: 'OK.ru' };
+
+    console.log('[OkRu] No video URL found, page length:', html.length, 'has data-options:', !!optsMatch);
     return null;
   } catch (e) {
     console.log('[OkRu] Error:', e.message);
@@ -3444,7 +3496,7 @@ async function searchAllAnime(searchQuery, limit = 10) {
  */
 async function getEpisodeSources(showId, episode) {
   // Check KV cache first - stream sources for a given showId+episode are stable for minutes
-  const kvKey = `aa:streams:${showId}:${episode}`;
+  const kvKey = `aa:streams:v3:${showId}:${episode}`;
   const cached = await kvCacheGet(kvKey);
   if (cached) {
     return cached;
@@ -3610,10 +3662,18 @@ async function getEpisodeSources(showId, episode) {
     }
   }
 
-  // Cache in KV (5 min TTL - streams change when new sources are added)
-  // Only cache non-empty results to avoid masking temporary API failures
+  // Cache in KV (2 min TTL - stream URLs expire quickly)
+  // Only cache if we have streams beyond just fast4speed (which is often down)
+  // or if we only have fast4speed but no extraction was attempted (rate-limited)
+  const hasNonFast4speed = streams.some(s => !s.url?.includes('fast4speed'));
+  const hasFast4speedOnly = streams.length > 0 && !hasNonFast4speed;
   if (streams.length > 0) {
-    kvCachePut(kvKey, streams, KV_TTL.AA_STREAMS);
+    if (hasFast4speedOnly) {
+      // Shorter cache for fast4speed-only results (30s) - extraction might succeed on retry
+      kvCachePut(kvKey, streams, 30);
+    } else {
+      kvCachePut(kvKey, streams, KV_TTL.AA_STREAMS);
+    }
   }
 
   return streams;
@@ -10468,17 +10528,36 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
       
       if (streams && streams.length > 0) {
         for (const stream of streams) {
-          // Proxy URLs that require Referer header (fast4speed)
+          // Proxy URLs that require Referer header through the worker
+          // fast4speed needs Referer: https://allanime.to/
+          // Extracted URLs (OK.ru, MP4Upload) need Referer from the embed page
           let streamUrl = stream.url;
-          if (stream.url.includes('fast4speed')) {
-            streamUrl = `${workerBaseUrl}/proxy/${encodeURIComponent(stream.url)}`;
+          const needsProxy = stream.url.includes('fast4speed') ||
+                             stream.behaviorHints?.notWebReady ||
+                             stream.behaviorHints?.proxyHeaders;
+          if (needsProxy) {
+            // For extracted streams, pass the original embed URL as Referer
+            const proxyReferer = stream.behaviorHints?.proxyHeaders?.request?.Referer;
+            console.log(`[StreamFmt] proxy: ${stream.url.substring(0, 50)}... needsProxy=${needsProxy} hasReferer=${!!proxyReferer} hints=${JSON.stringify(stream.behaviorHints)?.substring(0, 100)}`);
+            if (proxyReferer && !stream.url.includes('fast4speed')) {
+              streamUrl = `${workerBaseUrl}/proxy/${encodeURIComponent(stream.url)}?ref=${encodeURIComponent(proxyReferer)}`;
+            } else {
+              streamUrl = `${workerBaseUrl}/proxy/${encodeURIComponent(stream.url)}`;
+            }
           }
           
-          formattedStreams.push({
+          const formatted = {
             name: `AnimeStream`,
-            title: `[SUB] ${stream.type || 'SUB'} - ${stream.quality || 'HD'}`,
+            title: `[${stream.type || 'SUB'}] ${stream.quality || 'HD'}${stream.provider ? ' - ' + stream.provider : ''}`,
             url: streamUrl
-          });
+          };
+          
+          // Pass through behaviorHints for Stremio to handle (only for non-proxied streams)
+          if (stream.behaviorHints && !needsProxy) {
+            formatted.behaviorHints = stream.behaviorHints;
+          }
+          
+          formattedStreams.push(formatted);
         }
       }
     }
@@ -10755,15 +10834,34 @@ export default {
     // ===== VIDEO PROXY =====
     // Proxy video streams to add required Referer header
     if (path.startsWith('/proxy/')) {
-      const videoUrl = decodeURIComponent(path.replace('/proxy/', ''));
+      // URL format: /proxy/<encoded-url> or /proxy/<encoded-url>?ref=<encoded-referer>
+      const pathAndQuery = path.replace('/proxy/', '');
+      const [encodedUrl, queryString] = pathAndQuery.split('?');
+      const videoUrl = decodeURIComponent(encodedUrl);
+      
+      // Parse optional Referer from query string
+      let referer = 'https://allanime.to/';
+      let origin = 'https://allanime.to';
+      if (queryString) {
+        const params = new URLSearchParams(queryString);
+        const ref = params.get('ref');
+        if (ref) {
+          referer = decodeURIComponent(ref);
+          // Extract origin from referer
+          try {
+            const refUrl = new URL(referer);
+            origin = `${refUrl.protocol}//${refUrl.host}`;
+          } catch (e) {}
+        }
+      }
       
       try {
         // Handle range requests for video seeking
         const rangeHeader = request.headers.get('Range');
         const headers = {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Referer': 'https://allanime.to/',
-          'Origin': 'https://allanime.to'
+          'Referer': referer,
+          'Origin': origin
         };
         
         if (rangeHeader) {
