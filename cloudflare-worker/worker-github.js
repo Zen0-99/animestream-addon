@@ -2319,6 +2319,10 @@ const ALLANIME_BASE = 'https://allanime.to';
 const MKISSA_URL = 'https://mkissa.to/';
 const CDN_IMMUTABLE = 'https://cdn.allanime.day/all/mk/_app/immutable/';
 const AA_CRYPTO_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
+// Utility: sleep for ms milliseconds
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
 // Fallback values (used only if runtime fetch from mkissa.to fails)
 const AA_FALLBACK_EPOCH = 4128;
 const AA_FALLBACK_MASK = 'b1a9a4d051988f1b1b12dbb747439d9bd64b09ea17835600a7eaa4de87c1ad87';
@@ -3108,81 +3112,105 @@ async function getEpisodeSources(showId, episode) {
   }
 
   for (const translationType of ['sub', 'dub']) {
-    try {
-      // AllAnime now requires a GET request with persisted query hash + aaReq token
-      const variables = JSON.stringify({
-        showId,
-        translationType,
-        episodeString: String(episode),
-      });
-      const extensions = JSON.stringify({
-        persistedQuery: { version: 1, sha256Hash: aaReqData.queryHash },
-        aaReq: aaReqData.token,
-      });
+    let success = false;
+    // Retry on rate-limit errors (AllAnime shares IP across all worker users)
+    for (let attempt = 1; attempt <= 3 && !success; attempt++) {
+      try {
+        // AllAnime now requires a GET request with persisted query hash + aaReq token
+        const variables = JSON.stringify({
+          showId,
+          translationType,
+          episodeString: String(episode),
+        });
+        const extensions = JSON.stringify({
+          persistedQuery: { version: 1, sha256Hash: aaReqData.queryHash },
+          aaReq: aaReqData.token,
+        });
 
-      const apiUrl = `${ALLANIME_API}?variables=${encodeURIComponent(variables)}&extensions=${encodeURIComponent(extensions)}`;
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': AA_CRYPTO_UA,
-          'Accept': 'application/json, text/plain, */*',
-          'Referer': 'https://youtu-chan.com/',
-        },
-      });
+        const apiUrl = `${ALLANIME_API}?variables=${encodeURIComponent(variables)}&extensions=${encodeURIComponent(extensions)}`;
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': AA_CRYPTO_UA,
+            'Accept': 'application/json, text/plain, */*',
+            'Referer': 'https://youtu-chan.com/',
+          },
+        });
 
-      if (!response.ok) {
-        console.log(`[AaStreams] ${translationType} response not ok: ${response.status}`);
-        continue;
-      }
+        if (!response.ok) {
+          console.log(`[AaStreams] ${translationType} response not ok: ${response.status}`);
+          if (response.status === 429 && attempt < 3) {
+            await sleep(2000 * attempt);
+            continue;
+          }
+          break;
+        }
 
-      const data = await response.json();
+        const data = await response.json();
 
-      // The response may be encrypted (tobeparsed) or direct
-      let episodeData = data?.data?.episode;
-      if (!episodeData && data?.data?.tobeparsed) {
-        const decrypted = await decryptTobeparsed(data.data.tobeparsed, aaReqData.keyHex);
-        if (decrypted?.episode) {
-          episodeData = decrypted.episode;
-        } else {
-          console.log(`[AaStreams] ${translationType} tobeparsed decrypt failed`);
+        // The response may be encrypted (tobeparsed) or direct
+        let episodeData = data?.data?.episode;
+        if (!episodeData && data?.data?.tobeparsed) {
+          const decrypted = await decryptTobeparsed(data.data.tobeparsed, aaReqData.keyHex);
+          if (decrypted?.episode) {
+            episodeData = decrypted.episode;
+          } else {
+            console.log(`[AaStreams] ${translationType} tobeparsed decrypt failed`);
+          }
+        }
+        if (data?.errors) {
+          const errMsg = JSON.stringify(data.errors).substring(0, 200);
+          console.log(`[AaStreams] ${translationType} API errors:`, errMsg);
+          // Check for rate-limit error in GraphQL errors
+          if (errMsg.includes('Too many requests') && attempt < 3) {
+            console.log(`[AaStreams] ${translationType} rate-limited, retrying in ${2000 * attempt}ms (attempt ${attempt}/3)`);
+            await sleep(2000 * attempt);
+            continue;
+          }
+        }
+        if (!episodeData?.sourceUrls) {
+          console.log(`[AaStreams] ${translationType} no sourceUrls (episodeData: ${!!episodeData})`);
+          break;
+        }
+
+        console.log(`[AaStreams] ${translationType} got ${episodeData.sourceUrls.length} source URLs`);
+        for (const source of episodeData.sourceUrls) {
+          if (!source.sourceUrl) continue;
+
+          const decodedUrl = decryptSourceUrl(source.sourceUrl);
+          if (!decodedUrl || !decodedUrl.startsWith('http')) continue;
+          if (decodedUrl.includes('listeamed.net')) continue;
+
+          const isDirect = isDirectStream(decodedUrl);
+          console.log(`[AaStreams] ${translationType} source: ${source.sourceName} | direct=${isDirect} | ${decodedUrl.substring(0, 80)}`);
+
+          // Only include direct streams for now (Stremio can play these)
+          if (!isDirect) continue;
+
+          streams.push({
+            url: decodedUrl,
+            quality: detectQuality(source.sourceName, decodedUrl),
+            provider: source.sourceName || 'AllAnime',
+            type: translationType.toUpperCase(),
+            isDirect: true,
+            behaviorHints: decodedUrl.includes('fast4speed') ? {
+              notWebReady: true,
+              bingeGroup: `allanime-${showId}`,
+              proxyHeaders: { request: { 'Referer': 'https://allanime.to/' } }
+            } : undefined,
+          });
+        }
+        success = true;
+      } catch (e) {
+        console.error(`Error fetching ${translationType}:`, e.message);
+        if (attempt < 3) {
+          await sleep(2000 * attempt);
         }
       }
-      if (data?.errors) {
-        console.log(`[AaStreams] ${translationType} API errors:`, JSON.stringify(data.errors).substring(0, 200));
-      }
-      if (!episodeData?.sourceUrls) {
-        console.log(`[AaStreams] ${translationType} no sourceUrls (episodeData: ${!!episodeData})`);
-        continue;
-      }
-
-      console.log(`[AaStreams] ${translationType} got ${episodeData.sourceUrls.length} source URLs`);
-      for (const source of episodeData.sourceUrls) {
-        if (!source.sourceUrl) continue;
-
-        const decodedUrl = decryptSourceUrl(source.sourceUrl);
-        if (!decodedUrl || !decodedUrl.startsWith('http')) continue;
-        if (decodedUrl.includes('listeamed.net')) continue;
-
-        const isDirect = isDirectStream(decodedUrl);
-        
-        // Only include direct streams for now (Stremio can play these)
-        if (!isDirect) continue;
-
-        streams.push({
-          url: decodedUrl,
-          quality: detectQuality(source.sourceName, decodedUrl),
-          provider: source.sourceName || 'AllAnime',
-          type: translationType.toUpperCase(),
-          isDirect: true,
-          behaviorHints: decodedUrl.includes('fast4speed') ? {
-            notWebReady: true,
-            bingeGroup: `allanime-${showId}`,
-            proxyHeaders: { request: { 'Referer': 'https://allanime.to/' } }
-          } : undefined,
-        });
-      }
-    } catch (e) {
-      console.error(`Error fetching ${translationType}:`, e.message);
+    }
+    // Small delay between sub and dub to avoid rate-limiting
+    if (translationType === 'sub') {
+      await sleep(500);
     }
   }
 
@@ -8505,14 +8533,61 @@ async function resolveRealDebrid(magnet, apiKey, fileIndex = 0, episode = null, 
     const finalData = await finalResponse.json();
     
     if (finalData.links && finalData.links.length > 0) {
-      // Step 5: Unrestrict the link
+      // Smart link selection for batch torrents
+      // When torrent is already cached, finalData.links contains ALL files
+      // We need to pick the correct one based on episode number
+      let linkIndex = 0;
+      
+      if (episode && finalData.links.length > 1 && finalData.files) {
+        // Build a mapping of file index to link (RD links are in same order as files)
+        const videoFileIndices = [];
+        for (let i = 0; i < finalData.files.length; i++) {
+          if (/\.(mkv|mp4|avi|webm|ts|m2ts)$/i.test(finalData.files[i].path)) {
+            videoFileIndices.push(i);
+          }
+        }
+        
+        // Try to find the matching episode among video files
+        const candidates = [];
+        for (let vIdx = 0; vIdx < videoFileIndices.length; vIdx++) {
+          const fileIdx = videoFileIndices[vIdx];
+          const file = finalData.files[fileIdx];
+          const filename = file.path.split('/').pop();
+          
+          // Skip non-episode files
+          if (/(NCOP|NCED|Preview|Special|SP[^a-z]|OVA|Menu|Trailer|PV|CM|Bonus)/i.test(filename)) {
+            continue;
+          }
+          
+          const info = extractEpisodeInfo(filename);
+          if (info.episode === episode) {
+            if (info.season !== null && info.season !== season) {
+              continue;
+            }
+            candidates.push({ vIdx, file, info });
+            console.log(`[RD Files] Cached match: ${filename} (E${info.episode})`);
+          }
+        }
+        
+        if (candidates.length > 0) {
+          // Select largest matching file
+          candidates.sort((a, b) => b.file.bytes - a.file.bytes);
+          linkIndex = candidates[0].vIdx;
+          console.log(`[RD Files] Selected cached file: ${candidates[0].file.path} (link index ${linkIndex})`);
+        } else {
+          console.log(`[RD Files] No episode match in cached torrent, using first link`);
+        }
+      }
+      
+      // Step 5: Unrestrict the correct link
+      const linkToUnrestrict = finalData.links[linkIndex] || finalData.links[0];
       const unrestrictResponse = await fetch('https://api.real-debrid.com/rest/1.0/unrestrict/link', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `link=${encodeURIComponent(finalData.links[0])}`
+        body: `link=${encodeURIComponent(linkToUnrestrict)}`
       });
       
       const unrestrictData = await unrestrictResponse.json();
@@ -8983,6 +9058,10 @@ async function resolveTorBox(magnet, apiKey, fileIndex = 0, episode = null, seas
             const filename = file.name || file.short_name || '';
             const info = extractEpisodeInfo(filename);
             if (info.episode === episode) {
+              // Check season if specified in filename
+              if (info.season !== null && info.season !== season) {
+                continue;
+              }
               selectedFile = file;
               console.log(`[TB Resolve] Found episode ${episode}: ${filename}`);
               found = true;
