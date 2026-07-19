@@ -8674,7 +8674,7 @@ async function fetchTorrentsDB(baseId, season, episode, type) {
     }
 
     // Check cache first (5 min TTL - torrent sources don't change fast)
-    const cacheKey = `tdb:${baseId}:${season}:${episode}:${type}`;
+    const cacheKey = `tdb:v2:${baseId}:${season}:${episode}:${type}`;
     const cached = await kvCacheGet(cacheKey);
     if (cached) {
       console.log(`[TorrentsDB] Cache hit: ${cached.length} torrents`);
@@ -8687,10 +8687,20 @@ async function fetchTorrentsDB(baseId, season, episode, type) {
       : `https://torrentsdb.com/stream/series/${baseId}:${season}:${episode}.json`;
 
     console.log(`[TorrentsDB] Fetching: ${url.substring(0, 80)}...`);
-    const r = await fetch(url, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(10000), // 10s timeout
-    });
+    
+    // Retry on 429 (rate-limited) with exponential backoff
+    let r;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      r = await fetch(url, {
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(10000), // 10s timeout
+      });
+      if (r.status !== 429) break;
+      const retryAfter = parseInt(r.headers.get('retry-after') || '0');
+      const delay = retryAfter > 0 ? retryAfter * 1000 : (2000 * (attempt + 1));
+      console.log(`[TorrentsDB] HTTP 429, retrying in ${delay}ms (attempt ${attempt + 1}/3)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
 
     if (!r.ok) {
       console.log(`[TorrentsDB] HTTP ${r.status}`);
@@ -9008,7 +9018,7 @@ async function checkRealDebridCache(infoHash, apiKey) {
 /**
  * Add magnet to Real-Debrid and get download link
  */
-async function resolveRealDebrid(magnet, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '') {
+async function resolveRealDebrid(magnet, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '', expectedFilename = '', hasFileIndex = false) {
   try {
     // Step 1: Add magnet
     const addResponse = await fetch('https://api.real-debrid.com/rest/1.0/torrents/addMagnet', {
@@ -9047,7 +9057,19 @@ async function resolveRealDebrid(magnet, apiKey, fileIndex = 0, episode = null, 
       // Smart file selection for batch torrents using episode extraction
       let selectedFile = null;
       
-      if (episode && videoFiles.length > 1) {
+      // If fileIndex was explicitly provided (from TorrentsDB), use it directly
+      if (hasFileIndex && expectedFilename) {
+        const expectedLower = expectedFilename.toLowerCase();
+        selectedFile = videoFiles.find(f => {
+          const fn = f.path.split('/').pop().toLowerCase();
+          return fn === expectedLower || fn.endsWith(expectedLower) || expectedLower.endsWith(fn);
+        });
+        if (selectedFile) {
+          console.log(`[RD Files] Selected by filename match: ${selectedFile.path}`);
+        }
+      }
+      
+      if (!selectedFile && episode && videoFiles.length > 1) {
         console.log(`[RD Files] Looking for episode ${episode} in ${videoFiles.length} files...`);
         
         const candidates = [];
@@ -9421,9 +9443,9 @@ async function checkDebridCacheBatch(infoHashes, provider, apiKey) {
  * Add magnet to AllDebrid and get download link
  * IMPROVED: Fail fast for non-cached torrents, better magnet handling
  */
-async function resolveAllDebrid(magnet, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '') {
+async function resolveAllDebrid(magnet, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '', expectedFilename = '', hasFileIndex = false) {
   try {
-    console.log(`[AD Resolve] Starting resolution for magnet${episode ? ` (looking for S${season}E${episode})` : ''}${expectedAnimeName ? ` (expecting: "${expectedAnimeName}")` : ''}`);
+    console.log(`[AD Resolve] Starting resolution for magnet${episode ? ` (looking for S${season}E${episode})` : ''}${expectedAnimeName ? ` (expecting: "${expectedAnimeName}")` : ''}${hasFileIndex ? ` (fileIdx: ${fileIndex})` : ''}`);
     
     // Step 1: Upload magnet (POST method)
     const uploadResponse = await fetch(
@@ -9465,7 +9487,7 @@ async function resolveAllDebrid(magnet, apiKey, fileIndex = 0, episode = null, s
     // If already ready (cached), get files directly - FAST PATH
     if (magnetInfo.ready === true) {
       console.log(`[AD Resolve] Magnet already cached, getting files`);
-      return await getAllDebridFiles(magnetId, apiKey, fileIndex, episode, season, expectedAnimeName);
+      return await getAllDebridFiles(magnetId, apiKey, fileIndex, episode, season, expectedAnimeName, expectedFilename, hasFileIndex);
     }
     
     // NOT CACHED - Let AllDebrid download it and poll for completion
@@ -9511,7 +9533,7 @@ async function resolveAllDebrid(magnet, apiKey, fileIndex = 0, episode = null, s
       // Status 4 = Ready
       if (statusCode === 4) {
         console.log(`[AD Resolve] Download complete! Getting files...`);
-        return await getAllDebridFiles(magnetId, apiKey, fileIndex, episode, season, expectedAnimeName);
+        return await getAllDebridFiles(magnetId, apiKey, fileIndex, episode, season, expectedAnimeName, expectedFilename, hasFileIndex);
       }
       
       // Status >= 5 = Error
@@ -9546,9 +9568,9 @@ async function resolveAllDebrid(magnet, apiKey, fileIndex = 0, episode = null, s
  * @param {string} expectedAnimeName - Expected anime name for validation
  * @returns {Promise<string|object|null>} - Direct URL, status object, or null on error
  */
-async function resolveTorBox(magnet, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '') {
+async function resolveTorBox(magnet, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '', expectedFilename = '', hasFileIndex = false) {
   try {
-    console.log(`[TB Resolve] Starting resolution${episode ? ` for S${season}E${episode}` : ''}${expectedAnimeName ? ` (expecting: "${expectedAnimeName}")` : ''}`);
+    console.log(`[TB Resolve] Starting resolution${episode ? ` for S${season}E${episode}` : ''}${expectedAnimeName ? ` (expecting: "${expectedAnimeName}")` : ''}${hasFileIndex ? ` (fileIdx: ${fileIndex})` : ''}${expectedFilename ? ` (file: "${expectedFilename.substring(0, 50)}")` : ''}`);
     
     // Step 1: Create torrent
     const formData = new FormData();
@@ -9628,7 +9650,36 @@ async function resolveTorBox(magnet, apiKey, fileIndex = 0, episode = null, seas
         // Smart file selection for episode
         let selectedFile = videoFiles[0];
         
-        if (episode && videoFiles.length > 1) {
+        // If fileIndex was explicitly provided (from TorrentsDB), use it directly
+        // This is the most reliable method - TorrentsDB already matched the correct file
+        if (hasFileIndex && fileIndex >= 0) {
+          // TorBox file IDs may not match torrent file indices directly
+          // Try matching by filename first, then fall back to index
+          if (expectedFilename) {
+            const expectedLower = expectedFilename.toLowerCase();
+            const matchByFilename = videoFiles.find(f => {
+              const fn = (f.name || f.short_name || '').toLowerCase();
+              return fn === expectedLower || fn.endsWith(expectedLower) || expectedLower.endsWith(fn);
+            });
+            if (matchByFilename) {
+              selectedFile = matchByFilename;
+              console.log(`[TB Resolve] Selected by filename match: ${selectedFile.name || selectedFile.short_name}`);
+            } else {
+              // Fall back to fileIndex as position in video files array
+              if (fileIndex < videoFiles.length) {
+                selectedFile = videoFiles[fileIndex];
+                console.log(`[TB Resolve] Selected by fileIndex ${fileIndex}: ${selectedFile.name || selectedFile.short_name}`);
+              } else {
+                console.log(`[TB Resolve] fileIndex ${fileIndex} out of range (${videoFiles.length} video files), using episode matching`);
+              }
+            }
+          } else if (fileIndex < videoFiles.length) {
+            selectedFile = videoFiles[fileIndex];
+            console.log(`[TB Resolve] Selected by fileIndex ${fileIndex}: ${selectedFile.name || selectedFile.short_name}`);
+          } else {
+            console.log(`[TB Resolve] fileIndex ${fileIndex} out of range (${videoFiles.length} video files), using episode matching`);
+          }
+        } else if (episode && videoFiles.length > 1) {
           console.log(`[TB Resolve] Looking for episode ${episode} in ${videoFiles.length} files`);
           
           // First pass: exact extractEpisodeInfo match
@@ -9798,7 +9849,7 @@ function validateFileMatchesAnime(filename, expectedName) {
  * @param {number} season - Target season number
  * @param {string} expectedAnimeName - The anime name we expect (for validation)
  */
-async function getAllDebridFiles(magnetId, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '') {
+async function getAllDebridFiles(magnetId, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '', expectedFilename = '', hasFileIndex = false) {
   try {
     // Get files using /magnet/files endpoint
     const filesResponse = await fetch(
@@ -9846,7 +9897,19 @@ async function getAllDebridFiles(magnetId, apiKey, fileIndex = 0, episode = null
     // Smart file selection when episode is specified and there are multiple files
     let selectedFile = null;
     
-    if (episode && videoFiles.length > 1) {
+    // If fileIndex was explicitly provided (from TorrentsDB), try filename match first
+    if (hasFileIndex && expectedFilename) {
+      const expectedLower = expectedFilename.toLowerCase();
+      selectedFile = videoFiles.find(f => {
+        const fn = f.filename.toLowerCase();
+        return fn === expectedLower || fn.endsWith(expectedLower) || expectedLower.endsWith(fn);
+      });
+      if (selectedFile) {
+        console.log(`[AD Files] Selected by filename match: ${selectedFile.filename}`);
+      }
+    }
+    
+    if (!selectedFile && episode && videoFiles.length > 1) {
       console.log(`[AD Files] Looking for episode ${episode} in ${videoFiles.length} files...`);
       
       // Use the episode extraction system for accurate file matching
@@ -9983,9 +10046,9 @@ async function getAllDebridFiles(magnetId, apiKey, fileIndex = 0, episode = null
 /**
  * Resolve magnet to direct link using configured debrid provider
  */
-async function resolveDebrid(magnet, infoHash, provider, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '') {
-  // Include episode in cache key for batch torrents
-  const cacheKey = `debrid:${provider}:${infoHash}:${episode || 'all'}`;
+async function resolveDebrid(magnet, infoHash, provider, apiKey, fileIndex = 0, episode = null, season = 1, expectedAnimeName = '', expectedFilename = '', hasFileIndex = false) {
+  // Include episode and fileIndex in cache key for batch torrents
+  const cacheKey = `debrid:${provider}:${infoHash}:${episode || 'all'}:${hasFileIndex ? fileIndex : 'auto'}`;
   
   // Check cache (only cache successful URL strings, not status objects)
   const cached = debridCache.get(cacheKey);
@@ -10006,13 +10069,13 @@ async function resolveDebrid(magnet, infoHash, provider, apiKey, fileIndex = 0, 
   
   switch (provider) {
     case 'realdebrid':
-      result = await resolveRealDebrid(magnet, apiKey, fileIndex, episode, season, expectedAnimeName);
+      result = await resolveRealDebrid(magnet, apiKey, fileIndex, episode, season, expectedAnimeName, expectedFilename, hasFileIndex);
       break;
     case 'alldebrid':
-      result = await resolveAllDebrid(magnet, apiKey, fileIndex, episode, season, expectedAnimeName);
+      result = await resolveAllDebrid(magnet, apiKey, fileIndex, episode, season, expectedAnimeName, expectedFilename, hasFileIndex);
       break;
     case 'torbox':
-      result = await resolveTorBox(magnet, apiKey, fileIndex, episode, season, expectedAnimeName);
+      result = await resolveTorBox(magnet, apiKey, fileIndex, episode, season, expectedAnimeName, expectedFilename, hasFileIndex);
       break;
     // Add more providers as needed
     default:
@@ -10865,7 +10928,7 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
             formattedStreams.push({
               name: `${cacheEmoji} AnimeStream (${providerShort})`,
               title: fullTitle,
-              url: `${workerBaseUrl}/debrid/play?ih=${torrent.infoHash}&p=${config.debridProvider}&key=${encodeURIComponent(config.debridApiKey)}&ep=${absoluteEpisode}&s=${season}&an=${encodeURIComponent(animeName)}`,
+              url: `${workerBaseUrl}/debrid/play?ih=${torrent.infoHash}&p=${config.debridProvider}&key=${encodeURIComponent(config.debridApiKey)}&ep=${absoluteEpisode}&s=${season}&an=${encodeURIComponent(animeName)}${torrent.fileIndex != null ? `&idx=${torrent.fileIndex}` : ''}&fn=${encodeURIComponent(torrent.filename || '')}`,
               behaviorHints: {
                 bingeGroup: `torrent-${showId}-${season}`
               }
@@ -11027,9 +11090,11 @@ export default {
       const provider = url.searchParams.get('p');
       const apiKey = url.searchParams.get('key');
       const fileIndex = parseInt(url.searchParams.get('idx') || '0');
+      const hasFileIndex = url.searchParams.has('idx');
       const episode = url.searchParams.get('ep') ? parseInt(url.searchParams.get('ep')) : null;
       const season = url.searchParams.get('s') ? parseInt(url.searchParams.get('s')) : 1;
       const expectedAnimeName = url.searchParams.get('an') ? decodeURIComponent(url.searchParams.get('an')) : '';
+      const expectedFilename = url.searchParams.get('fn') ? decodeURIComponent(url.searchParams.get('fn')) : '';
       
       if (!infoHash || !provider || !apiKey) {
         return jsonResponse({ 
@@ -11038,14 +11103,15 @@ export default {
         }, { status: 400 });
       }
       
-      console.log(`[Debrid Play] Resolving ${infoHash} via ${provider}${episode ? ` for S${season}E${episode}` : ''}${expectedAnimeName ? ` (expecting: "${expectedAnimeName}")` : ''}`);
+      console.log(`[Debrid Play] Resolving ${infoHash} via ${provider}${episode ? ` for S${season}E${episode}` : ''}${expectedAnimeName ? ` (expecting: "${expectedAnimeName}")` : ''}${hasFileIndex ? ` (fileIdx: ${fileIndex})` : ''}${expectedFilename ? ` (file: "${expectedFilename.substring(0, 50)}")` : ''}`);
       
       try {
         // Build magnet from info hash WITH TRACKERS for better resolution
         const magnet = buildMagnetWithTrackers(infoHash);
         
         // Resolve via debrid provider - pass episode info for smart file selection
-        const result = await resolveDebrid(magnet, infoHash, provider, apiKey, fileIndex, episode, season, expectedAnimeName);
+        // Pass hasFileIndex so resolver knows if fileIndex was explicitly provided
+        const result = await resolveDebrid(magnet, infoHash, provider, apiKey, fileIndex, episode, season, expectedAnimeName, expectedFilename, hasFileIndex);
         
         // Handle "downloading" status - torrent not cached
         if (result && typeof result === 'object' && result.status === 'downloading') {
