@@ -7721,13 +7721,29 @@ async function scrapeNyaa(animeName, episode = null, season = 1, isMovie = false
       
       console.log(`[Nyaa] Searching: ${url}`);
       
-      const response = await fetch(url, {
-        headers: buildBrowserHeaders(),
-        cf: { cacheTtl: 300, cacheEverything: true }
-      });
+      // Retry with backoff for 429/504 errors (Nyaa rate-limits aggressively)
+      let response;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          cf: { cacheTtl: 300, cacheEverything: true }
+        });
+        if (response.ok || (response.status !== 429 && response.status !== 504)) break;
+        const delay = (attempt + 1) * 1500;
+        console.log(`[Nyaa] Got ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/3)`);
+        await new Promise(r => setTimeout(r, delay));
+      }
       
       if (!response.ok) {
         console.error(`[Nyaa] Error: ${response.status}`);
+        // If rate-limited, skip remaining queries (they'll also be 429)
+        if (response.status === 429) {
+          console.log(`[Nyaa] Rate-limited, skipping remaining ${uniqueQueries.length - uniqueQueries.indexOf(query) - 1} queries`);
+        }
         continue;
       }
       
@@ -7883,7 +7899,11 @@ async function scrapeAnimeTosho(animeName, episode = null, season = 1, isMovie =
       console.log(`[AnimeTosho] Searching: ${url}`);
     
       const response = await fetch(url, {
-        headers: buildBrowserHeaders(),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
         cf: { cacheTtl: 300, cacheEverything: true }
       });
       
@@ -8006,7 +8026,11 @@ async function scrapeAnimeToshoByAniDbId(anidbId, episode = null, season = 1, is
     console.log(`[AnimeTosho-AniDB] Fetching JSON for AniDB ID ${anidbId}`);
     
     const response = await fetch(url, {
-      headers: buildBrowserHeaders(),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
       cf: { cacheTtl: 300, cacheEverything: true }
     });
     
