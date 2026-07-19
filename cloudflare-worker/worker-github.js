@@ -2312,6 +2312,247 @@ const CONFIGURE_HTML = `<!doctype html>
 const ALLANIME_API = 'https://api.allanime.day/api';
 const ALLANIME_BASE = 'https://allanime.to';
 
+// ===== ALLANIME CRYPTO (aaReq token for episode source queries) =====
+// AllAnime now requires AES-GCM signed tokens for the episode endpoint.
+// The crypto values (epoch, partB) are fetched from mkissa.to, the mask and
+// query hash from the app's JS chunk. They rotate every few days.
+const MKISSA_URL = 'https://mkissa.to/';
+const CDN_IMMUTABLE = 'https://cdn.allanime.day/all/mk/_app/immutable/';
+const AA_CRYPTO_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+// Fallback values (used only if runtime fetch from mkissa.to fails)
+const AA_FALLBACK_EPOCH = 4128;
+const AA_FALLBACK_MASK = 'b1a9a4d051988f1b1b12dbb747439d9bd64b09ea17835600a7eaa4de87c1ad87';
+const AA_FALLBACK_PART_B = 'k7DLdv5SGiuEyGUtcncl5wQOR7r4aenLfDV3AOBKlAU=';
+const AA_FALLBACK_QUERY_HASH = 'd405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec';
+
+// Crypto cache: { expires, epoch, keyHex, mask, queryHash }
+let aaCryptoCache = null;
+let _staticKeyHex = null;
+
+function bytesToHex(bytes) {
+  return [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBytes(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+  }
+  return bytes;
+}
+
+async function getStaticKeyHex() {
+  if (_staticKeyHex) return _staticKeyHex;
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode('Xot36i3lK3:v1'));
+  _staticKeyHex = bytesToHex(new Uint8Array(hashBuffer));
+  return _staticKeyHex;
+}
+
+// XOR two byte arrays (for computing AES key from mask and partB)
+function xorBytes(a, b) {
+  const result = new Uint8Array(Math.max(a.length, b.length));
+  for (let i = 0; i < result.length; i++) {
+    result[i] = (a[i] || 0) ^ (b[i] || 0);
+  }
+  return result;
+}
+
+// Base64 decode to Uint8Array
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Base64 encode from Uint8Array
+function bytesToBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Resolve ${...} interpolations in the GraphQL query template from the JS chunk
+function resolveQueryTemplate(tmpl, chunkJs, depth = 0) {
+  if (depth > 6) return tmpl;
+  const matches = [...tmpl.matchAll(/\$\{([^}]+)\}/g)];
+  for (const m of matches) {
+    const name = m[1];
+    let repl = '';
+    if (name.endsWith('()')) {
+      // helper = e => e ? `...` : `...`, called without argument -> else branch
+      const escaped = name.slice(0, -2).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const fn = chunkJs.match(new RegExp(`\\b${escaped}\\s*=\\s*\\w+\\s*=>\\s*\\w+\\s*\\?\\s*\`([^\`]*)\`\\s*:\\s*\`([^\`]*)\``));
+      repl = fn ? fn[2] : ''; // else branch
+    } else {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const varMatch = chunkJs.match(new RegExp(`\\b${escaped}\\s*=\\s*\`([^\`]*)\``));
+      repl = varMatch ? resolveQueryTemplate(varMatch[1], chunkJs, depth + 1) : '';
+    }
+    tmpl = tmpl.replace('${' + name + '}', repl);
+  }
+  return tmpl;
+}
+
+// Fetch crypto values from mkissa.to and the app JS chunk
+async function fetchAaCrypto() {
+  const headers = { 'User-Agent': AA_CRYPTO_UA };
+  try {
+    // 1. Fetch mkissa.to to get window.__aaCrypto (epoch, partB)
+    const htmlResp = await fetch(MKISSA_URL, { headers });
+    const html = await htmlResp.text();
+    const aaMatch = html.match(/window\.__aaCrypto\s*=\s*(\{.*?\})/);
+    if (!aaMatch) throw new Error('No __aaCrypto in mkissa.to HTML');
+    const aa = JSON.parse(aaMatch[1]);
+    const { partB, epoch } = aa;
+    const expires = Math.max(
+      (aa.switchAt || 0) + (aa.graceMs || 0),
+      Date.now() + 3600000
+    );
+
+    // 2. Find the app.js chunk URL
+    const appMatch = html.match(/_app\/immutable\/(entry\/app\.[^"']+\.(?:js|mjs))/);
+    if (!appMatch) throw new Error('No app.js found in HTML');
+    const appJsResp = await fetch(CDN_IMMUTABLE + appMatch[1], { headers });
+    const appJs = await appJsResp.text();
+
+    // 3. Find chunk imports and search for the one with __aaCrypto
+    const chunkRefs = [...new Set([...appJs.matchAll(/chunks\/[A-Za-z0-9_\-]+\.js/g)].map(m => m[0]))];
+    for (const chunk of chunkRefs) {
+      const chunkResp = await fetch(CDN_IMMUTABLE + chunk, { headers });
+      const chunkJs = await chunkResp.text();
+      if (!chunkJs.includes('aaCrypto') || !chunkJs.includes('sourceUrls')) continue;
+
+      // Find the 64-char hex mask
+      const masks = chunkJs.match(/[0-9a-f]{64}/g);
+      if (!masks || masks.length === 0) continue;
+      const mask = masks[0];
+
+      // Extract the source query template (from the a4=function or similar)
+      const a4Idx = chunkJs.indexOf('a4=function');
+      let template = null;
+      if (a4Idx >= 0) {
+        const returnIdx = chunkJs.indexOf('return`', a4Idx);
+        if (returnIdx >= 0) {
+          const startIdx = returnIdx + 7;
+          let endIdx = startIdx;
+          while (endIdx < chunkJs.length && chunkJs[endIdx] !== '`') endIdx++;
+          template = chunkJs.slice(startIdx, endIdx);
+        }
+      }
+      // Fallback: find template by searching for backtick-delimited strings with sourceUrls
+      if (!template) {
+        const allTemplates = [...chunkJs.matchAll(/`([^`]*)`/g)].map(m => m[1]);
+        template = allTemplates.find(t => t.includes('sourceUrls') && t.includes('episode('));
+      }
+      if (!template) continue;
+
+      // Resolve interpolations and compute query hash
+      const resolvedQuery = resolveQueryTemplate(template, chunkJs);
+      const encoder = new TextEncoder();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(resolvedQuery));
+      const queryHash = bytesToHex(new Uint8Array(hashBuffer));
+
+      // Compute AES key: mask XOR base64decode(partB)
+      const maskBytes = hexToBytes(mask);
+      const partBBytes = base64ToBytes(partB);
+      const keyBytes = xorBytes(maskBytes, partBBytes);
+      const keyHex = bytesToHex(keyBytes);
+
+      console.log(`[AaCrypto] Fetched from site: epoch=${epoch}, mask=${mask.substring(0, 8)}..., queryHash=${queryHash.substring(0, 8)}...`);
+      return { expires, epoch, keyHex, mask, queryHash };
+    }
+    throw new Error('No crypto chunk found');
+  } catch (e) {
+    console.error('[AaCrypto] Fetch failed, using fallback:', e.message);
+    // Compute fallback key
+    const maskBytes = hexToBytes(AA_FALLBACK_MASK);
+    const partBBytes = base64ToBytes(AA_FALLBACK_PART_B);
+    const keyBytes = xorBytes(maskBytes, partBBytes);
+    return {
+      expires: Date.now() + 3600000,
+      epoch: AA_FALLBACK_EPOCH,
+      keyHex: bytesToHex(keyBytes),
+      mask: AA_FALLBACK_MASK,
+      queryHash: AA_FALLBACK_QUERY_HASH,
+    };
+  }
+}
+
+// Get current crypto values (with caching)
+async function getAaCrypto() {
+  if (aaCryptoCache && aaCryptoCache.expires > Date.now()) {
+    return aaCryptoCache;
+  }
+  aaCryptoCache = await fetchAaCrypto();
+  return aaCryptoCache;
+}
+
+// Build the aaReq token for episode source queries
+async function buildAaReqToken() {
+  const aaCrypto = await getAaCrypto();
+  const { epoch, keyHex, queryHash } = aaCrypto;
+
+  // Timestamp floored to 5-minute window
+  const ts = Math.floor(Date.now() / 300000) * 300000;
+  const payload = { v: 1, ts, epoch, qh: queryHash };
+  const payloadJson = JSON.stringify(payload);
+
+  // IV: SHA-256 of "epoch:queryHash:ts", first 12 bytes
+  const encoder = new TextEncoder();
+  const ivInput = `${epoch}:${queryHash}:${ts}`;
+  const ivHash = await crypto.subtle.digest('SHA-256', encoder.encode(ivInput));
+  const iv = new Uint8Array(ivHash).slice(0, 12);
+
+  // AES-GCM encrypt
+  const key = await crypto.subtle.importKey('raw', hexToBytes(keyHex), { name: 'AES-GCM' }, false, ['encrypt']);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(payloadJson));
+  // encrypted = ciphertext + tag (tag is last 16 bytes)
+
+  // Token: 0x01 + iv + ciphertext + tag (all base64)
+  const encryptedBytes = new Uint8Array(encrypted);
+  const tokenBytes = new Uint8Array(1 + iv.length + encryptedBytes.length);
+  tokenBytes[0] = 0x01;
+  tokenBytes.set(iv, 1);
+  tokenBytes.set(encryptedBytes, 1 + iv.length);
+
+  return { queryHash, token: bytesToBase64(tokenBytes), keyHex };
+}
+
+// Decrypt tobeparsed response
+async function decryptTobeparsed(tobeparsed, keyHex) {
+  const raw = base64ToBytes(tobeparsed);
+  const iv = raw.slice(1, 13);
+  const ciphertextWithTag = raw.slice(13); // ciphertext + tag (last 16 bytes)
+
+  // Try with the aaReq key first
+  try {
+    const key = await crypto.subtle.importKey('raw', hexToBytes(keyHex), { name: 'AES-GCM' }, false, ['decrypt']);
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertextWithTag);
+    const text = new TextDecoder().decode(decrypted);
+    return JSON.parse(text);
+  } catch (e) {
+    // Try with static legacy key
+    const staticKeyHex = await getStaticKeyHex();
+    try {
+      const key2 = await crypto.subtle.importKey('raw', hexToBytes(staticKeyHex), { name: 'AES-GCM' }, false, ['decrypt']);
+      const decrypted2 = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key2, ciphertextWithTag);
+      const text2 = new TextDecoder().decode(decrypted2);
+      return JSON.parse(text2);
+    } catch (e2) {
+      console.error('[AaCrypto] tobeparsed decryption failed with both keys:', e2.message);
+      // Invalidate cache so next request refetches crypto
+      aaCryptoCache = null;
+      return null;
+    }
+  }
+}
+
 // ===== DATA CACHE (in-memory per worker instance) =====
 // Simple in-memory cache - each worker instance maintains its own cache
 // Combined with HTTP Cache-Control headers, this provides multi-layer caching:
@@ -2855,34 +3096,66 @@ async function getEpisodeSources(showId, episode) {
     return cached;
   }
 
-  const query = `
-    query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) {
-      episode(showId: $showId, translationType: $translationType, episodeString: $episodeString) {
-        episodeString
-        sourceUrls
-      }
-    }
-  `;
-
   const streams = [];
+
+  // Build aaReq token for the crypto-gated episode endpoint
+  let aaReqData;
+  try {
+    aaReqData = await buildAaReqToken();
+  } catch (e) {
+    console.error('[AaCrypto] Failed to build aaReq token:', e.message);
+    return streams;
+  }
 
   for (const translationType of ['sub', 'dub']) {
     try {
-      const response = await fetch(ALLANIME_API, {
-        method: 'POST',
-        headers: { ...buildBrowserHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query,
-          variables: { showId, translationType, episodeString: String(episode) },
-        }),
+      // AllAnime now requires a GET request with persisted query hash + aaReq token
+      const variables = JSON.stringify({
+        showId,
+        translationType,
+        episodeString: String(episode),
+      });
+      const extensions = JSON.stringify({
+        persistedQuery: { version: 1, sha256Hash: aaReqData.queryHash },
+        aaReq: aaReqData.token,
       });
 
-      if (!response.ok) continue;
+      const apiUrl = `${ALLANIME_API}?variables=${encodeURIComponent(variables)}&extensions=${encodeURIComponent(extensions)}`;
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': AA_CRYPTO_UA,
+          'Accept': 'application/json, text/plain, */*',
+          'Referer': 'https://youtu-chan.com/',
+        },
+      });
+
+      if (!response.ok) {
+        console.log(`[AaStreams] ${translationType} response not ok: ${response.status}`);
+        continue;
+      }
 
       const data = await response.json();
-      const episodeData = data?.data?.episode;
-      if (!episodeData?.sourceUrls) continue;
 
+      // The response may be encrypted (tobeparsed) or direct
+      let episodeData = data?.data?.episode;
+      if (!episodeData && data?.data?.tobeparsed) {
+        const decrypted = await decryptTobeparsed(data.data.tobeparsed, aaReqData.keyHex);
+        if (decrypted?.episode) {
+          episodeData = decrypted.episode;
+        } else {
+          console.log(`[AaStreams] ${translationType} tobeparsed decrypt failed`);
+        }
+      }
+      if (data?.errors) {
+        console.log(`[AaStreams] ${translationType} API errors:`, JSON.stringify(data.errors).substring(0, 200));
+      }
+      if (!episodeData?.sourceUrls) {
+        console.log(`[AaStreams] ${translationType} no sourceUrls (episodeData: ${!!episodeData})`);
+        continue;
+      }
+
+      console.log(`[AaStreams] ${translationType} got ${episodeData.sourceUrls.length} source URLs`);
       for (const source of episodeData.sourceUrls) {
         if (!source.sourceUrl) continue;
 
@@ -9666,6 +9939,7 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
   // Fetch streams directly from AllAnime API
   try {
     const formattedStreams = [];
+    let debridCheckFailed = false;
     
     // Check stream mode to determine what to fetch
     const includeTorrents = config.streamMode === 'torrents' || config.streamMode === 'both';
@@ -9807,7 +10081,6 @@ async function handleStream(catalog, type, id, config = {}, requestUrl = null) {
         
         // Batch check cache status for all torrents (if debrid configured)
         let cacheStatus = new Map();
-        let debridCheckFailed = false;
         if (hasDebrid) {
           const topTorrents = torrents.slice(0, 15);
           const hashes = topTorrents.map(t => t.infoHash).filter(Boolean);
