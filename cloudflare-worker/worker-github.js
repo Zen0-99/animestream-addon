@@ -3032,17 +3032,337 @@ async function calculateAbsoluteEpisodeForTorrents(imdbId, season, episode) {
   return episode;
 }
 
+// ===== EMBED EXTRACTORS =====
+// Ported from aniyomi-extensions extractors to extract direct video URLs
+// from embed pages (MP4Upload, StreamWish, OK.ru, StreamSB) that AllAnime returns.
+// These run at request time so URLs are fresh (not expired).
+
+/**
+ * Dean Edwards JS packer unpacker.
+ * Ported from aniyomi lib/unpacker/Unpacker.kt
+ * Unpacks eval(function(p,a,c,k,e,d){...}('...',...,'...',0,{})) style packed JS.
+ */
+function jsUnpack(packed) {
+  if (!packed || !packed.includes('eval(function(p,a,c,k,e,d)')) return null;
+  try {
+    // Extract the packed data: }('DATA','SPLIT',0,{}))
+    const start = packed.indexOf("}('");
+    if (start < 0) return null;
+    const payload = packed.substring(start + 3);
+    const endIdx = payload.indexOf(".split('|'),0,{}))");
+    if (endIdx < 0) return null;
+    const raw = payload.substring(0, endIdx);
+
+    // Split into data and dictionary: 'DATA','DICT'
+    // The raw string is: DATA','DICT
+    const parts = raw.split("',");
+    if (parts.length < 2) return null;
+    const data = parts[0].replace(/\\"/g, '"');
+    const dictStr = parts.slice(1).join("',").replace(/^'/, '').replace(/'$/, '');
+    const dictionary = dictStr.split('|');
+
+    // Replace base62 tokens in data with dictionary entries
+    const wordRegex = /[0-9A-Za-z]+/g;
+    return data.replace(wordRegex, (key) => {
+      const index = parseRadix62(key);
+      if (index < dictionary.length && dictionary[index]) return dictionary[index];
+      return key;
+    });
+  } catch (e) {
+    console.log('[Unpacker] Error:', e.message);
+    return null;
+  }
+}
+
+function parseRadix62(str) {
+  let result = 0;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    if (ch <= 57) { // 0-9
+      result = result * 62 + (ch - 48);
+    } else if (ch >= 97) { // a-z
+      result = result * 62 + (ch - 97 + 10);
+    } else { // A-Z
+      result = result * 62 + (ch - 65 + 36);
+    }
+  }
+  return result;
+}
+
+/**
+ * Extract direct video URL from MP4Upload embed page.
+ * Ported from aniyomi lib/mp4upload-extractor/Mp4uploadExtractor.kt
+ */
+async function extractMp4Upload(url) {
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': AA_CRYPTO_UA, 'Referer': 'https://mp4upload.com/' },
+    });
+    const html = await r.text();
+    if (html.length < 100) return null;
+
+    // Try unpacking eval-packed JS
+    const packedMatch = html.match(/eval\(function\(p,a,c,k,e,d\).*?\}\([^)]+\)\)/s);
+    if (packedMatch) {
+      const unpacked = jsUnpack(packedMatch[0]);
+      if (unpacked) {
+        const srcMatch = unpacked.match(/player\.src\(['"]([^'"]+)['"]\)/) ||
+                         unpacked.match(/src:\s*['"]([^'"]+\.mp4[^'"]*)['"]/) ||
+                         unpacked.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
+        if (srcMatch) {
+          const resolution = unpacked.match(/HEIGHT=(\d+)/);
+          return { url: srcMatch[1], quality: resolution ? `${resolution[1]}p` : 'MP4Upload' };
+        }
+      }
+    }
+
+    // Try direct src pattern
+    const srcMatch = html.match(/player\.src\(['"]([^'"]+\.mp4[^'"]*)['"]\)/) ||
+                     html.match(/src:\s*['"]([^'"]+\.mp4[^'"]*)['"]/) ||
+                     html.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
+    if (srcMatch) {
+      const resolution = html.match(/HEIGHT=(\d+)/);
+      return { url: srcMatch[1], quality: resolution ? `${resolution[1]}p` : 'MP4Upload' };
+    }
+    return null;
+  } catch (e) {
+    console.log('[Mp4Upload] Error:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Extract direct video URL from StreamWish embed page.
+ * Ported from aniyomi lib/streamwish-extractor/StreamWishExtractor.kt
+ * Note: StreamWish now uses obfuscated main.js, so this tries direct regex
+ * and packed JS unpacking. May not work on all mirrors.
+ */
+async function extractStreamWish(url) {
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': AA_CRYPTO_UA, 'Referer': 'https://allanime.to/' },
+    });
+    const html = await r.text();
+    if (html.length < 100) return null;
+
+    // Try unpacking eval-packed JS
+    const packedMatch = html.match(/eval\(function\(p,a,c,k,e,d\).*?\}\([^)]+\)\)/s);
+    if (packedMatch) {
+      const unpacked = jsUnpack(packedMatch[0]);
+      if (unpacked) {
+        const m3u8Match = unpacked.match(/(https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*)/);
+        if (m3u8Match) return { url: m3u8Match[1], quality: 'StreamWish' };
+        const mp4Match = unpacked.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
+        if (mp4Match) return { url: mp4Match[1], quality: 'StreamWish' };
+      }
+    }
+
+    // Try direct m3u8/mp4 in page (works on some mirrors)
+    const m3u8Match = html.match(/"file"\s*:\s*"(https?:\/\/[^"]+\.m3u8[^"]*)"/) ||
+                      html.match(/(https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*)/);
+    if (m3u8Match) return { url: m3u8Match[1], quality: 'StreamWish' };
+
+    const mp4Match = html.match(/"file"\s*:\s*"(https?:\/\/[^"]+\.mp4[^"]*)"/) ||
+                     html.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
+    if (mp4Match) return { url: mp4Match[1], quality: 'StreamWish' };
+
+    return null;
+  } catch (e) {
+    console.log('[StreamWish] Error:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Extract direct video URL from Filemoon embed page.
+ * Filemoon uses a React SPA, so direct extraction is limited.
+ * Tries to find m3u8/mp4 in the page or packed JS.
+ */
+async function extractFilemoon(url) {
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': AA_CRYPTO_UA, 'Referer': 'https://allanime.to/' },
+    });
+    const html = await r.text();
+    if (html.length < 100) return null;
+
+    // Try unpacking eval-packed JS
+    const packedMatch = html.match(/eval\(function\(p,a,c,k,e,d\).*?\}\([^)]+\)\)/s);
+    if (packedMatch) {
+      const unpacked = jsUnpack(packedMatch[0]);
+      if (unpacked) {
+        const m3u8Match = unpacked.match(/(https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*)/);
+        if (m3u8Match) return { url: m3u8Match[1], quality: 'Filemoon' };
+        const mp4Match = unpacked.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
+        if (mp4Match) return { url: mp4Match[1], quality: 'Filemoon' };
+      }
+    }
+
+    // Try direct m3u8/mp4 in page
+    const m3u8Match = html.match(/"file"\s*:\s*"(https?:\/\/[^"]+\.m3u8[^"]*)"/) ||
+                      html.match(/(https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*)/);
+    if (m3u8Match) return { url: m3u8Match[1], quality: 'Filemoon' };
+
+    const mp4Match = html.match(/"file"\s*:\s*"(https?:\/\/[^"]+\.mp4[^"]*)"/) ||
+                     html.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
+    if (mp4Match) return { url: mp4Match[1], quality: 'Filemoon' };
+
+    return null;
+  } catch (e) {
+    console.log('[Filemoon] Error:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Generic fallback extractor - tries to find any direct video URL in a page.
+ * Works for simple embed pages that include the video URL in HTML/JS.
+ */
+async function extractGeneric(url) {
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': AA_CRYPTO_UA, 'Referer': 'https://allanime.to/' },
+    });
+    const html = await r.text();
+    if (html.length < 100) return null;
+
+    // Try unpacking eval-packed JS
+    const packedMatch = html.match(/eval\(function\(p,a,c,k,e,d\).*?\}\([^)]+\)\)/s);
+    if (packedMatch) {
+      const unpacked = jsUnpack(packedMatch[0]);
+      if (unpacked) {
+        const m3u8Match = unpacked.match(/(https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*)/);
+        if (m3u8Match) return { url: m3u8Match[1], quality: 'Embed' };
+        const mp4Match = unpacked.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
+        if (mp4Match) return { url: mp4Match[1], quality: 'Embed' };
+      }
+    }
+
+    // Try direct m3u8/mp4 in page
+    const m3u8Match = html.match(/(https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*)/);
+    if (m3u8Match) return { url: m3u8Match[1], quality: 'Embed' };
+
+    const mp4Match = html.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
+    if (mp4Match) return { url: mp4Match[1], quality: 'Embed' };
+
+    return null;
+  } catch (e) {
+    console.log('[Generic] Error:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Extract direct video URL from OK.ru embed page.
+ * Ported from aniyomi lib/okru-extractor/OkruExtractor.kt
+ */
+async function extractOkRu(url) {
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': AA_CRYPTO_UA },
+    });
+    const html = await r.text();
+    if (html.length < 100) return null;
+
+    // Find data-options attribute
+    const optsMatch = html.match(/data-options="([^"]+)"/);
+    if (optsMatch) {
+      const decoded = optsMatch[1]
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/\\u0026/g, '&');
+
+      // Try HLS
+      const hlsMatch = decoded.match(/ondemandHls\\":\\"([^"\\]+)/);
+      if (hlsMatch) return { url: hlsMatch[1], quality: 'OK.ru HLS' };
+
+      // Try DASH
+      const dashMatch = decoded.match(/ondemandDash\\":\\"([^"\\]+)/);
+      if (dashMatch) return { url: dashMatch[1], quality: 'OK.ru DASH' };
+
+      // Try direct video URLs from JSON
+      const videos = [...decoded.matchAll(/\\?"url\\?":\\?"([^"\\]+)"/g)].map(m => m[1]);
+      if (videos.length > 0) {
+        // Pick highest quality (last in list, as OK.ru lists low to high)
+        return { url: videos[videos.length - 1], quality: 'OK.ru' };
+      }
+    }
+
+    // Fallback: search for m3u8 or mp4 in page
+    const m3u8Match = html.match(/(https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*)/);
+    if (m3u8Match) return { url: m3u8Match[1], quality: 'OK.ru' };
+
+    const mp4Match = html.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/);
+    if (mp4Match) return { url: mp4Match[1], quality: 'OK.ru' };
+
+    return null;
+  } catch (e) {
+    console.log('[OkRu] Error:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Extract direct video URL from StreamSB embed page via API.
+ * Ported from AllManga.to-API extract_streamsb
+ */
+async function extractStreamSB(url) {
+  try {
+    const sidMatch = url.match(/\/(?:e|v|embed|d)\/([^/?#]+)/);
+    if (!sidMatch) return null;
+    const sid = sidMatch[1].replace(/\.html$/, '');
+
+    const hosts = ['streamsb.net', 'sbplay.org', 'sbfast.com', 'sbfull.com'];
+    for (const host of hosts) {
+      try {
+        const apiUrl = `https://${host}/api/source/${sid}`;
+        const r = await fetch(apiUrl, {
+          headers: { 'User-Agent': AA_CRYPTO_UA, 'Referer': url, 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const text = await r.text();
+        if (text.startsWith('<')) continue; // HTML error page
+        const data = JSON.parse(text);
+        if (data.data && data.data.length > 0) {
+          // Pick highest quality (last entry)
+          const best = data.data[data.data.length - 1];
+          return { url: best.file, quality: best.label || 'StreamSB' };
+        }
+      } catch (e) {
+        // Try next host
+      }
+    }
+    return null;
+  } catch (e) {
+    console.log('[StreamSB] Error:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Try to extract a direct video URL from an embed page.
+ * Dispatches to the appropriate extractor based on the URL.
+ * Returns { url, quality } or null.
+ */
+async function extractEmbedUrl(url) {
+  if (/mp4upload/i.test(url)) return extractMp4Upload(url);
+  if (/streamwish|videos\.sh|streamwish\.|sfast\.|wishfast/i.test(url)) return extractStreamWish(url);
+  if (/ok\.ru|okru/i.test(url)) return extractOkRu(url);
+  if (/streamsb|sbplay|sblongvu|sbchill/i.test(url)) return extractStreamSB(url);
+  if (/filemoon|bysekoze|moonfast|filemooz/i.test(url)) return extractFilemoon(url);
+  // Generic fallback: try to find any m3u8/mp4 in the page
+  return extractGeneric(url);
+}
+
 // Check if URL is a direct video stream
 function isDirectStream(url) {
   // Direct video file extensions
   if (/\.(mp4|m3u8|mkv|webm|ts|mpd|avi|mov)(\?|$)/i.test(url)) return true;
-  // Known streaming providers that serve direct video
+  // fast4speed serves direct video (already a playable URL, just needs Referer)
   if (/fast4speed\.rsvp/i.test(url)) return true;
-  if (/streamtape|streamta\.pe|streamtape\.to/i.test(url)) return true;
-  if (/mp4upload/i.test(url)) return true;
-  // AllAnime often uses redirect/proxy URLs that resolve to direct streams
-  // Allow any URL that looks like a video stream endpoint
-  if (/(stream|video|play|embed|watch|cdn|media)/i.test(url) && !/(youtube|twitch|facebook|twitter|instagram)/i.test(url)) return true;
+  // StreamTape direct video URLs (getvideo pattern)
+  if (/streamtape\.(com|net|to)\/getvideo/i.test(url)) return true;
+  // Embed pages (mp4upload, streamsb, ok.ru, videos.sh) are NOT direct streams -
+  // they need extraction via extractEmbedUrl() to get the actual video URL
   return false;
 }
 
@@ -3240,21 +3560,41 @@ async function getEpisodeSources(showId, episode) {
           const isDirect = isDirectStream(decodedUrl);
           console.log(`[AaStreams] ${translationType} source: ${source.sourceName} | direct=${isDirect} | ${decodedUrl.substring(0, 80)}`);
 
-          // Only include direct streams for now (Stremio can play these)
-          if (!isDirect) continue;
-
-          streams.push({
-            url: decodedUrl,
-            quality: detectQuality(source.sourceName, decodedUrl),
-            provider: source.sourceName || 'AllAnime',
-            type: translationType.toUpperCase(),
-            isDirect: true,
-            behaviorHints: decodedUrl.includes('fast4speed') ? {
-              notWebReady: true,
-              bingeGroup: `allanime-${showId}`,
-              proxyHeaders: { request: { 'Referer': 'https://allanime.to/' } }
-            } : undefined,
-          });
+          if (isDirect) {
+            // Direct stream - Stremio can play this immediately
+            streams.push({
+              url: decodedUrl,
+              quality: detectQuality(source.sourceName, decodedUrl),
+              provider: source.sourceName || 'AllAnime',
+              type: translationType.toUpperCase(),
+              isDirect: true,
+              behaviorHints: decodedUrl.includes('fast4speed') ? {
+                notWebReady: true,
+                bingeGroup: `allanime-${showId}`,
+                proxyHeaders: { request: { 'Referer': 'https://allanime.to/' } }
+              } : undefined,
+            });
+          } else {
+            // Embed page - try to extract direct video URL
+            const extracted = await extractEmbedUrl(decodedUrl);
+            if (extracted) {
+              console.log(`[AaStreams] ${translationType} extracted: ${extracted.url.substring(0, 80)} (${extracted.quality})`);
+              streams.push({
+                url: extracted.url,
+                quality: detectQuality(source.sourceName, extracted.url) || extracted.quality,
+                provider: source.sourceName || 'AllAnime',
+                type: translationType.toUpperCase(),
+                isDirect: true,
+                behaviorHints: {
+                  notWebReady: true,
+                  bingeGroup: `allanime-${showId}`,
+                  proxyHeaders: { request: { 'Referer': decodedUrl } }
+                },
+              });
+            } else {
+              console.log(`[AaStreams] ${translationType} extraction failed for ${source.sourceName}`);
+            }
+          }
         }
         success = true;
       } catch (e) {
