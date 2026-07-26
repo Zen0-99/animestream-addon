@@ -352709,7 +352709,7 @@
         "Action & Adventure",
         "Sci-Fi & Fantasy"
       ],
-      "episodeCount": 360,
+      "episodeCount": 420,
       "runtime": "10 min",
       "ageRating": "PG",
       "subtype": "ONA",
@@ -352727,7 +352727,7 @@
       ],
       "_matchSource": "imdb_exact",
       "countryOfOrigin": "CN",
-      "episodes": 360
+      "episodes": 420
     },
     {
       "id": "tt0422553",
@@ -383357,8 +383357,8 @@
       "year": 2024,
       "season": "fall",
       "status": "ONGOING",
-      "episodes": 180,
-      "episodeCount": 180,
+      "episodes": 195,
+      "episodeCount": 195,
       "runtime": "11 min per ep",
       "genres": [
         "Action",
@@ -386486,7 +386486,7 @@
       "description": "The fourth and final part of BLEACH: Sennen Kessen-hen. \n\n\n\nDestruction looms at the end of the Thousand-Year Blood War between the Soul Reapers and Quincies… as the death of the Soul King mirrors the collapse of the Three Worlds, distortions and omens of destruction start to appear in all realms. \n\n\n\nFierce battles erupt throughout the Wahr Welt between the Thirteen Court Guard Squads and the Royal Guard. Ichigo learns about Uryuu's true intentions and renews his determination to protect the world together, as friends who trust each other. Yhwach has surpassed even his own ability, The Almighty...\n\n\n\nThe fierce battle for the survival of the Three Worlds approaches its end. Beyond the chaos of calamity, what lies in wait—despair or hope?\n\n\n\n(Source: VIZ Media, edited)",
       "year": 2026,
       "season": "SUMMER",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx185874-aU3e6tBT6wwA.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx185874-aU3e6tBT6wwA.jpg",
@@ -386497,7 +386497,7 @@
         "Adventure",
         "Supernatural"
       ],
-      "episodeCount": 13,
+      "episodeCount": 10,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -386507,7 +386507,8 @@
         "BLEACH 千年血戦篇-禍進譚-"
       ],
       "broadcastDay": "Saturday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 10
     },
     {
       "id": "mal-60637",
