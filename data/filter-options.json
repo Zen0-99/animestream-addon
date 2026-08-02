@@ -107,7 +107,7 @@
       "Romance (899)",
       "Action & Adventure (800)",
       "School (651)",
-      "Slice of Life (575)",
+      "Slice of Life (576)",
       "Supernatural (536)",
       "Mecha (477)",
       "Kids (420)",
@@ -567,7 +567,7 @@
     "withCounts": [
       "2026 - Winter (69)",
       "2026 - Fall (10)",
-      "2026 - Summer (78)",
+      "2026 - Summer (79)",
       "2026 - Spring (5)",
       "2025 - Winter (52)",
       "2025 - Fall (70)",
@@ -826,18 +826,18 @@
       "Sunday"
     ],
     "withCounts": [
-      "Monday (13)",
+      "Monday (14)",
       "Tuesday (9)",
       "Wednesday (12)",
       "Thursday (11)",
-      "Friday (12)",
+      "Friday (11)",
       "Saturday (23)",
       "Sunday (16)"
     ]
   },
   "stats": {
-    "totalAnime": 7682,
-    "totalSeries": 6038,
+    "totalAnime": 7683,
+    "totalSeries": 6039,
     "totalMovies": 1644,
     "genreCount": 93,
     "movieGenreCount": 58,

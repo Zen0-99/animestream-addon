@@ -379446,7 +379446,7 @@
       ],
       "_matchSource": "imdb_exact",
       "countryOfOrigin": "JP",
-      "broadcastDay": "Friday"
+      "broadcastDay": "Monday"
     },
     {
       "id": "tt12885386",
@@ -386136,7 +386136,7 @@
       "genres": [
         "Drama"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": "24 min",
       "ageRating": null,
       "subtype": "TV",
@@ -386146,7 +386146,8 @@
         "対ありでした。 ～お嬢さまは格闘ゲームなんてしない～"
       ],
       "broadcastDay": "Tuesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-49233",
@@ -386644,7 +386645,7 @@
         "Drama",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 11,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -386654,7 +386655,8 @@
         "ふつつかな悪女ではございますが ~雛宮蝶鼠とりかえ伝~"
       ],
       "broadcastDay": "Sunday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 11
     },
     {
       "id": "mal-61280",
@@ -388679,6 +388681,40 @@
       "synonyms": [
         "Sazin no Nakade",
         "砂塵ノ中デ"
+      ],
+      "broadcastDay": null,
+      "countryOfOrigin": "JP"
+    },
+    {
+      "id": "mal-64580",
+      "imdb_id": null,
+      "kitsu_id": null,
+      "mal_id": 64580,
+      "anilist_id": 213908,
+      "anidb_id": null,
+      "type": "movie",
+      "name": "Rusuban",
+      "slug": "rusuban",
+      "description": "Set in August 1987, the story follows one day in the life of Tokko as she stays at home in a large house while her family is away.\n\n\n\n(Source: Anime News Network)",
+      "year": 2026,
+      "season": "SUMMER",
+      "status": "FINISHED",
+      "rating": null,
+      "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx213908-ZBUHQxLVUzSW.jpg",
+      "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx213908-ZBUHQxLVUzSW.jpg",
+      "logo": null,
+      "cast": [],
+      "genres": [
+        "Slice of Life"
+      ],
+      "episodeCount": 1,
+      "runtime": "13 min",
+      "ageRating": null,
+      "subtype": "MOVIE",
+      "popularity": 219,
+      "synonyms": [
+        "Rusuban",
+        "るすばん"
       ],
       "broadcastDay": null,
       "countryOfOrigin": "JP"
