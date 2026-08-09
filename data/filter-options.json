@@ -97,7 +97,7 @@
     ],
     "withCounts": [
       "Animation (4326)",
-      "Comedy (2731)",
+      "Comedy (2732)",
       "Action (2009)",
       "Drama (1612)",
       "Adventure (1574)",
@@ -567,7 +567,7 @@
     "withCounts": [
       "2026 - Winter (69)",
       "2026 - Fall (10)",
-      "2026 - Summer (79)",
+      "2026 - Summer (80)",
       "2026 - Spring (5)",
       "2025 - Winter (52)",
       "2025 - Fall (70)",
@@ -836,8 +836,8 @@
     ]
   },
   "stats": {
-    "totalAnime": 7683,
-    "totalSeries": 6039,
+    "totalAnime": 7684,
+    "totalSeries": 6040,
     "totalMovies": 1644,
     "genreCount": 93,
     "movieGenreCount": 58,

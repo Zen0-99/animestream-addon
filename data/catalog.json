@@ -387682,7 +387682,7 @@
         "Romance",
         "Supernatural"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": "24 min",
       "ageRating": null,
       "subtype": "TV",
@@ -387692,7 +387692,8 @@
         "乙女怪獣キャラメリゼ"
       ],
       "broadcastDay": "Thursday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-63324",
@@ -388715,6 +388716,40 @@
       "synonyms": [
         "Rusuban",
         "るすばん"
+      ],
+      "broadcastDay": null,
+      "countryOfOrigin": "JP"
+    },
+    {
+      "id": "mal-64725",
+      "imdb_id": null,
+      "kitsu_id": null,
+      "mal_id": 64725,
+      "anilist_id": 214855,
+      "anidb_id": null,
+      "type": "series",
+      "name": "Fate/Grand Order: Fujimaru Ritsuka wa Wakaranai Season 4",
+      "slug": "fate-grand-order-fujimaru-ritsuka-wa-wakaranai-season-4",
+      "description": "The fourth season of Fate/Grand Order: Fujimaru Ritsuka wa Wakaranai.",
+      "year": 2026,
+      "season": "SUMMER",
+      "status": "ONGOING",
+      "rating": null,
+      "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b214855-PbAsjXJq3NB7.jpg",
+      "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b214855-PbAsjXJq3NB7.jpg",
+      "logo": null,
+      "cast": [],
+      "genres": [
+        "Comedy"
+      ],
+      "episodeCount": null,
+      "runtime": "2 min",
+      "ageRating": null,
+      "subtype": "ONA",
+      "popularity": null,
+      "synonyms": [
+        "Fate/Grand Order: Fujimaru Ritsuka wa Wakaranai Season 4",
+        "Fate/Grand Order 藤丸立香はわからない Season4"
       ],
       "broadcastDay": null,
       "countryOfOrigin": "JP"
