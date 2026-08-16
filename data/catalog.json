@@ -386572,7 +386572,7 @@
         "Adventure",
         "Fantasy"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": "24 min",
       "ageRating": null,
       "subtype": "ONA",
@@ -386582,7 +386582,8 @@
         "猫と竜"
       ],
       "broadcastDay": "Saturday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-61169",
@@ -386789,7 +386790,7 @@
         "Comedy",
         "Fantasy"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": "23 min",
       "ageRating": null,
       "subtype": "TV",
@@ -386799,7 +386800,8 @@
         "片田舎のおっさん、剣聖になるII"
       ],
       "broadcastDay": "Wednesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62031",
@@ -386931,7 +386933,7 @@
         "Romance",
         "Slice of Life"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": "25 min",
       "ageRating": null,
       "subtype": "ONA",
@@ -386941,7 +386943,8 @@
         "領民0人スタートの辺境領主様"
       ],
       "broadcastDay": "Friday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62080",
@@ -386967,7 +386970,7 @@
         "Fantasy",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": "24 min",
       "ageRating": null,
       "subtype": "TV",
@@ -386977,7 +386980,8 @@
         "無自覚聖女は今日も無意識に力を垂れ流す"
       ],
       "broadcastDay": "Tuesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62102",
@@ -387221,7 +387225,7 @@
         "Romance",
         "Supernatural"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -387231,7 +387235,8 @@
         "花織さんは転生しても喧嘩がしたい"
       ],
       "broadcastDay": "Saturday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62542",
@@ -387400,7 +387405,7 @@
         "Ecchi",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": "24 min",
       "ageRating": null,
       "subtype": "TV",
@@ -387410,7 +387415,8 @@
         "君のことが大大大大大好きな100人の彼女 第3期"
       ],
       "broadcastDay": "Sunday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62876",
@@ -387470,7 +387476,7 @@
         "Drama",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": "24 min",
       "ageRating": null,
       "subtype": "TV",
@@ -387480,7 +387486,8 @@
         "透明な夜に駆ける君と、目に見えない恋をした。"
       ],
       "broadcastDay": "Monday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62973",
