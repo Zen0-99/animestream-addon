@@ -328141,7 +328141,7 @@
         "Sci-Fi & Fantasy",
         "Action & Adventure"
       ],
-      "episodeCount": null,
+      "episodeCount": 10,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -328165,7 +328165,8 @@
       ],
       "_matchSource": "imdb_exact",
       "countryOfOrigin": "JP",
-      "broadcastDay": "Tuesday"
+      "broadcastDay": "Tuesday",
+      "episodes": 10
     },
     {
       "id": "tt0419965",
@@ -382095,7 +382096,7 @@
       "rating": 7.33,
       "year": 2025,
       "season": "summer",
-      "status": "ONGOING",
+      "status": "FINISHED",
       "episodes": 52,
       "episodeCount": 52,
       "runtime": "20 min per ep",
@@ -382344,8 +382345,8 @@
       "year": 2021,
       "season": "spring",
       "status": "ONGOING",
-      "episodes": 568,
-      "episodeCount": 568,
+      "episodes": 620,
+      "episodeCount": 620,
       "runtime": "7 min",
       "genres": [
         "Action",
@@ -388757,6 +388758,42 @@
       "synonyms": [
         "Fate/Grand Order: Fujimaru Ritsuka wa Wakaranai Season 4",
         "Fate/Grand Order 藤丸立香はわからない Season4"
+      ],
+      "broadcastDay": null,
+      "countryOfOrigin": "JP"
+    },
+    {
+      "id": "al-215761",
+      "imdb_id": null,
+      "kitsu_id": null,
+      "mal_id": null,
+      "anilist_id": 215761,
+      "anidb_id": null,
+      "type": "series",
+      "name": "POKÉTOON (2026)",
+      "slug": "pok-toon-2026",
+      "description": "Short episodes for Pokémon's 30th anniversary released on the Pokémon Official YouTube Channel.\n\n\n\nEpisodes:\n\n#1: Kameil to, Natsu no Tsuzuki (カメールと、夏のつづき), released August 12. 2026. \n\n#2: Mischievous Whimsicott? Not on Mabosstiff's Watch! / Itazura Elfuun to Saseruka Mafitiff (いたずらエルフーンとさせるかマフィティフ), released August 19, 2026.",
+      "year": 2026,
+      "season": "SUMMER",
+      "status": "FINISHED",
+      "rating": null,
+      "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx215761-uWLyrwumMTb4.png",
+      "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx215761-uWLyrwumMTb4.png",
+      "logo": null,
+      "cast": [],
+      "genres": [
+        "Adventure",
+        "Fantasy",
+        "Slice of Life"
+      ],
+      "episodeCount": 2,
+      "runtime": "10 min",
+      "ageRating": null,
+      "subtype": "ONA",
+      "popularity": 243,
+      "synonyms": [
+        "POKÉTOON (2026)",
+        "POKÉTOON (2026)"
       ],
       "broadcastDay": null,
       "countryOfOrigin": "JP"
