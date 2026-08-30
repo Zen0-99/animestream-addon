@@ -387938,7 +387938,7 @@
         "Fantasy",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 24,
       "runtime": "23 min",
       "ageRating": null,
       "subtype": "TV",
@@ -387948,7 +387948,8 @@
         "天は赤い河のほとり"
       ],
       "broadcastDay": "Tuesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 24
     },
     {
       "id": "mal-63508",
