@@ -1,0 +1,174 @@
+name: KV Analytics Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Number of days to report on (default 30)'
+        required: false
+        default: '30'
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Query KV analytics and create issue
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DAYS: ${{ inputs.days }}
+        run: |
+          set -euo pipefail
+
+          DAYS="${DAYS:-30}"
+          END_DATE=$(date -u '+%Y-%m-%d')
+          # GraphQL API limits to ~32 day windows, so we query in chunks if needed
+          START_DATE=$(date -u -d "$END_DATE - $DAYS days" '+%Y-%m-%d' 2>/dev/null || date -u -v-${DAYS}d '+%Y-%m-%d')
+
+          echo "Querying KV analytics from $START_DATE to $END_DATE ($DAYS days)"
+
+          # Namespace ID -> name mapping
+          declare -A NS_NAMES
+          NS_NAMES["928dc36173b84dd8bee471aecaf69a8d"]="USER_TOKENS"
+          NS_NAMES["cd4c8644874547f18a077cc646eda3d6"]="API_CACHE"
+
+          # Query in 30-day chunks (GraphQL API limit is ~32 days)
+          CURRENT_START="$START_DATE"
+          ALL_RESULTS="[]"
+
+          while [[ "$CURRENT_START" < "$END_DATE" ]]; do
+            CURRENT_END=$(date -u -d "$CURRENT_START + 31 days" '+%Y-%m-%d' 2>/dev/null || date -u -v+31d '+%Y-%m-%d')
+            if [[ "$CURRENT_END" > "$END_DATE" ]]; then
+              CURRENT_END="$END_DATE"
+            fi
+
+            echo "  Chunk: $CURRENT_START to $CURRENT_END"
+
+            QUERY=$(cat <<EOF
+          {
+            "query": "query { viewer { accounts(filter: {accountTag: \"$CLOUDFLARE_ACCOUNT_ID\"}) { kvOperationsAdaptiveGroups(limit: 10000, filter: {date_geq: \"$CURRENT_START\", date_leq: \"$CURRENT_END\"}, orderBy: [date_DESC]) { sum { requests } dimensions { date actionType namespaceId } } } } }"
+          }
+          EOF
+            )
+
+            RESPONSE=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/graphql" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$QUERY")
+
+            CHUNK=$(echo "$RESPONSE" | jq -c '.data.viewer.accounts[0].kvOperationsAdaptiveGroups // []')
+
+            if [[ "$ALL_RESULTS" == "[]" ]]; then
+              ALL_RESULTS="$CHUNK"
+            else
+              ALL_RESULTS=$(echo "$ALL_RESULTS $CHUNK" | jq -c -s 'add')
+            fi
+
+            # Move to next chunk
+            CURRENT_START=$(date -u -d "$CURRENT_END + 1 day" '+%Y-%m-%d' 2>/dev/null || date -u -v+1d -j -f "%Y-%m-%d" "$CURRENT_END" '+%Y-%m-%d')
+          done
+
+          echo "Raw results count: $(echo "$ALL_RESULTS" | jq 'length')"
+
+          # Build markdown report
+          {
+            echo "# KV Analytics Report"
+            echo ""
+            echo "**Period:** $START_DATE to $END_DATE ($DAYS days)"
+            echo "**Account:** $CLOUDFLARE_ACCOUNT_ID"
+            echo "**Generated:** $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+
+            # Summary by namespace
+            echo "## Summary by Namespace"
+            echo ""
+            echo "| Namespace | Writes | Reads | Lists | Deletes | Total Ops |"
+            echo "|---|---|---|---|---|---|"
+
+            for NS_ID in "${!NS_NAMES[@]}"; do
+              NS_NAME="${NS_NAMES[$NS_ID]}"
+              WRITES=$(echo "$ALL_RESULTS" | jq -r --arg ns "$NS_ID" --arg act "write" '[.[] | select(.dimensions.namespaceId == $ns and .dimensions.actionType == $act) | .sum.requests] | add // 0')
+              READS=$(echo "$ALL_RESULTS" | jq -r --arg ns "$NS_ID" --arg act "read" '[.[] | select(.dimensions.namespaceId == $ns and .dimensions.actionType == $act) | .sum.requests] | add // 0')
+              LISTS=$(echo "$ALL_RESULTS" | jq -r --arg ns "$NS_ID" --arg act "list" '[.[] | select(.dimensions.namespaceId == $ns and .dimensions.actionType == $act) | .sum.requests] | add // 0')
+              DELETES=$(echo "$ALL_RESULTS" | jq -r --arg ns "$NS_ID" --arg act "delete" '[.[] | select(.dimensions.namespaceId == $ns and .dimensions.actionType == $act) | .sum.requests] | add // 0')
+              TOTAL=$((WRITES + READS + LISTS + DELETES))
+              echo "| $NS_NAME | $WRITES | $READS | $LISTS | $DELETES | $TOTAL |"
+            done
+
+            # Totals row
+            TOTAL_W=$(echo "$ALL_RESULTS" | jq -r '[.[] | select(.dimensions.actionType == "write") | .sum.requests] | add // 0')
+            TOTAL_R=$(echo "$ALL_RESULTS" | jq -r '[.[] | select(.dimensions.actionType == "read") | .sum.requests] | add // 0')
+            TOTAL_L=$(echo "$ALL_RESULTS" | jq -r '[.[] | select(.dimensions.actionType == "list") | .sum.requests] | add // 0')
+            TOTAL_D=$(echo "$ALL_RESULTS" | jq -r '[.[] | select(.dimensions.actionType == "delete") | .sum.requests] | add // 0')
+            TOTAL_ALL=$((TOTAL_W + TOTAL_R + TOTAL_L + TOTAL_D))
+            echo "| **TOTAL** | **$TOTAL_W** | **$TOTAL_R** | **$TOTAL_L** | **$TOTAL_D** | **$TOTAL_ALL** |"
+            echo ""
+
+            # Billing estimate
+            echo "## Billing Estimate"
+            echo ""
+            FREE_TIER=1000000
+            COST_PER_MILLION=5
+            if [[ $TOTAL_W -gt $FREE_TIER ]]; then
+              OVERAGE=$((TOTAL_W - FREE_TIER))
+              OVERAGE_COST=$(echo "scale=2; $OVERAGE * $COST_PER_MILLION / 1000000" | bc)
+              echo "- **Total writes:** $TOTAL_W"
+              echo "- **Free tier:** $FREE_TIER"
+              echo "- **Overage:** $OVERAGE writes"
+              echo "- **Estimated overage cost:** \$$OVERAGE_COST"
+            else
+              echo "- **Total writes:** $TOTAL_W (within free tier of $FREE_TIER)"
+              echo "- **Estimated overage cost:** $0.00"
+            fi
+            echo ""
+
+            # Daily breakdown
+            echo "## Daily Breakdown"
+            echo ""
+            echo "| Date | Namespace | Writes | Reads |"
+            echo "|---|---|---|---|"
+
+            echo "$ALL_RESULTS" | jq -r '
+              group_by(.dimensions.date) |
+              sort_by(.[0].dimensions.date) |
+              reverse |
+              .[] |
+              .[0].dimensions.date as $date |
+              group_by(.dimensions.namespaceId) |
+              .[] |
+              .[0].dimensions.namespaceId as $ns |
+              ([.[] | select(.dimensions.actionType == "write") | .sum.requests] | add // 0) as $writes |
+              ([.[] | select(.dimensions.actionType == "read") | .sum.requests] | add // 0) as $reads |
+              "\($date)\t\($ns)\t\($writes)\t\($reads)"
+            ' | while IFS=$'\t' read -r date ns writes reads; do
+              ns_name="${NS_NAMES[$ns]:-$ns}"
+              echo "| $date | $ns_name | $writes | $reads |"
+            done
+
+            echo ""
+            echo "---"
+            echo "*This report was generated by the \`kv-analytics-report\` GitHub Action.*"
+
+          } > /tmp/report.md
+
+          echo "=== Report preview ==="
+          cat /tmp/report.md
+          echo "=== End preview ==="
+
+          # Create GitHub issue (triggers email notification)
+          ISSUE_TITLE="KV Analytics Report: $START_DATE to $END_DATE"
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$ISSUE_TITLE" \
+            --body-file /tmp/report.md \
+            --label "analytics"
+
+          echo "Issue created successfully."
