@@ -168,7 +168,6 @@ jobs:
           gh issue create \
             --repo "$GITHUB_REPOSITORY" \
             --title "$ISSUE_TITLE" \
-            --body-file /tmp/report.md \
-            --label "analytics"
+            --body-file /tmp/report.md
 
           echo "Issue created successfully."
