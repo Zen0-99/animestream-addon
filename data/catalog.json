@@ -361462,7 +361462,7 @@
       "logo": null,
       "cast": [],
       "genres": [],
-      "episodeCount": null,
+      "episodeCount": 26,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -361475,7 +361475,8 @@
       ],
       "_matchSource": "imdb_exact",
       "countryOfOrigin": "JP",
-      "broadcastDay": "Monday"
+      "broadcastDay": "Monday",
+      "episodes": 26
     },
     {
       "id": "tt39281887",
@@ -379447,7 +379448,7 @@
       ],
       "_matchSource": "imdb_exact",
       "countryOfOrigin": "JP",
-      "broadcastDay": "Monday"
+      "broadcastDay": "Wednesday"
     },
     {
       "id": "tt12885386",
@@ -386463,7 +386464,7 @@
         "Fantasy",
         "Mahou Shoujo"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -386473,7 +386474,8 @@
         "株式会社マジルミエ 第2期"
       ],
       "broadcastDay": "Saturday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-60636",
@@ -387142,7 +387144,7 @@
       "description": "In an age when spies act behind the scenes in every land, Chloe spends her days successfully carrying out even the most difficult missions due to her unparalleled disguise skills and martial arts abilities. After the betrayal of her boss, she suddenly disappears—as Chloe plans to redo her life as the ordinary citizen Victoria in the neighboring kingdom of Ashberry, striving for a “normal” life. However, Victoria's peaceful life is abruptly cut short as she begins to get involved with many people. In this new land, her experiences and abilities from her days as a spy come in far more useful than she ever expected! On the other hand, the second prince--and others--take an interest in Victoria's strength, and the shadows close in on the woman with many faces…\n\n\n\n(Source: Yen Press)",
       "year": 2026,
       "season": "SUMMER",
-      "status": "ONGOING",
+      "status": "FINISHED",
       "rating": 6.9,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx198709-3PFLvU6eqPvf.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx198709-3PFLvU6eqPvf.jpg",
