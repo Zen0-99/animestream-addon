@@ -68,6 +68,14 @@ const MAX_KV_MEMORY_CACHE = 500;
  * @param {string} key - KV key
  * @returns {Promise<any|null>} Parsed JSON value or null if not found
  */
+function memCacheSet(key, value) {
+  if (kvMemoryCache.size >= MAX_KV_MEMORY_CACHE) {
+    const oldestKey = kvMemoryCache.keys().next().value;
+    kvMemoryCache.delete(oldestKey);
+  }
+  kvMemoryCache.set(key, value);
+}
+
 async function kvCacheGet(key) {
   // Check in-memory cache first (avoids KV read billing)
   const memCached = kvMemoryCache.get(key);
@@ -82,11 +90,7 @@ async function kvCacheGet(key) {
     if (raw === null) {
       // Cache null result too (negative caching) to avoid repeated KV lookups
       // but use a short-lived entry
-      if (kvMemoryCache.size >= MAX_KV_MEMORY_CACHE) {
-        const oldestKey = kvMemoryCache.keys().next().value;
-        kvMemoryCache.delete(oldestKey);
-      }
-      kvMemoryCache.set(key, null);
+      memCacheSet(key, null);
     }
     return raw;
   } catch (e) {
@@ -105,11 +109,7 @@ async function kvCacheGet(key) {
  */
 function kvCachePut(key, value, ttl = 0, ctx = null) {
   // Update in-memory cache immediately
-  if (kvMemoryCache.size >= MAX_KV_MEMORY_CACHE) {
-    const oldestKey = kvMemoryCache.keys().next().value;
-    kvMemoryCache.delete(oldestKey);
-  }
-  kvMemoryCache.set(key, value);
+  memCacheSet(key, value);
 
   if (!__ENV?.API_CACHE) return;
 
@@ -123,6 +123,164 @@ function kvCachePut(key, value, ttl = 0, ctx = null) {
   } else {
     // Fallback: fire-and-forget (best-effort, may not complete)
     putPromise.catch(e => console.error(`[KV] Error writing key "${key}":`, e.message));
+  }
+}
+
+// ===== EDGE CACHE (Cloudflare Cache API) =====
+// caches.default is free per-colo storage. Used for:
+//   1. Ephemeral API caches (aa:*, cm:*, hl:* keys) — replaces billed KV ops.
+//   2. Whole HTTP responses for public routes (meta/catalog/manifest/stats) —
+//      repeat requests across all users skip Worker execution entirely.
+// TTL is carried by the stored Response's Cache-Control max-age.
+const EDGE_CACHE_BASE = 'https://edge.animestream.internal';
+
+// Deterministic string hash — must match the copy in upload-to-kv.js
+// (used for title-bucket shard keys).
+function hashStr(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0);
+}
+
+/**
+ * Read a JSON value from the edge cache (with in-memory front layer).
+ * @returns {Promise<any|null>}
+ */
+async function edgeCacheGet(key) {
+  const memCached = kvMemoryCache.get(key);
+  if (memCached !== undefined) {
+    return memCached;
+  }
+
+  try {
+    const res = await caches.default.match(`${EDGE_CACHE_BASE}/api/${encodeURIComponent(key)}`);
+    if (res) {
+      const val = await res.json();
+      memCacheSet(key, val);
+      return val;
+    }
+  } catch (e) {
+    console.error(`[EdgeCache] Error reading key "${key}":`, e.message);
+  }
+
+  // Negative-cache misses in memory so hot misses don't re-hit cache.match
+  memCacheSet(key, null);
+  return null;
+}
+
+/**
+ * Store a JSON value in the edge cache (fire-and-forget via ctx.waitUntil).
+ * @param {number} ttl TTL in seconds (0 → 24h default)
+ */
+function edgeCachePut(key, value, ttl = 0) {
+  memCacheSet(key, value);
+
+  try {
+    const maxAge = ttl > 0 ? ttl : 86400;
+    const res = new Response(JSON.stringify(value), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${maxAge}` }
+    });
+    const putPromise = caches.default.put(`${EDGE_CACHE_BASE}/api/${encodeURIComponent(key)}`, res);
+    const guarded = putPromise.catch(e => console.error(`[EdgeCache] Error writing key "${key}":`, e.message));
+    if (__CTX?.waitUntil) __CTX.waitUntil(guarded);
+  } catch (e) {
+    console.error(`[EdgeCache] Error writing key "${key}":`, e.message);
+  }
+}
+
+// ===== EDGE RESPONSE CACHE =====
+// Whole-response caching for public GET routes. Cache keys are versioned
+// (CACHE_BUSTER) so a catalog update invalidates everything at once.
+
+function safeDecode(s) {
+  try { return decodeURIComponent(s); } catch { return s; }
+}
+
+// Canonicalize the catalog "extra" param string (order-independent key)
+function canonExtra(extraStr) {
+  if (!extraStr) return '-';
+  const pairs = [];
+  for (const part of extraStr.split('&')) {
+    const idx = part.indexOf('=');
+    if (idx > 0) pairs.push(`${part.slice(0, idx)}=${safeDecode(part.slice(idx + 1))}`);
+  }
+  pairs.sort();
+  return encodeURIComponent(pairs.join('&'));
+}
+
+const BUILTIN_CATALOG_IDS = new Set(['anime-top-rated', 'anime-season-releases', 'anime-airing', 'anime-movies']);
+const SEARCH_CATALOG_IDS = new Set(['anime-search', 'anime-series-search', 'anime-movies-search']);
+
+/**
+ * Map an incoming request URL to a normalized edge-cache key, or null when
+ * the route must never be shared-cached (user lists, /api/*, OAuth, POSTs).
+ * Config-dependent routes fold only the config fields that actually affect
+ * output into the key, so users with different tokens still share hits.
+ */
+function edgeResponseCacheKey(path) {
+  const base = `${EDGE_CACHE_BASE}/r/${CACHE_BUSTER}`;
+
+  // Meta: response ignores config entirely → strip it for cross-user hits
+  const metaMatch = path.match(/^(?:\/([^\/]+))?\/meta\/([^\/]+)\/(.+)\.json$/);
+  if (metaMatch) {
+    return `${base}/meta/${metaMatch[2]}/${encodeURIComponent(safeDecode(metaMatch[3]))}`;
+  }
+
+  // Catalog: only builtin + search catalogs are public; user lists carry
+  // private per-user data and are never cached.
+  const catMatch = path.match(/^(?:\/([^\/]+))?\/catalog\/([^\/]+)\/([^\/]+)(?:\/(.+))?\.json$/);
+  if (catMatch) {
+    const [, cfgStr, type, id, extraStr] = catMatch;
+    if (type !== 'anime') return `${base}/cat-empty/${canonExtra(extraStr)}`;
+    const isSearch = SEARCH_CATALOG_IDS.has(id);
+    if (!isSearch && !BUILTIN_CATALOG_IDS.has(id)) return null;
+    const config = parseConfig(cfgStr);
+    // Only config fields that change output go in the key
+    const cfgDigest = hashStr(JSON.stringify(isSearch
+      ? { r: config.rpdbApiKey }
+      : { r: config.rpdbApiKey, e: config.excludeLongRunning, o: config.contentOrigins, m: config.minRuntime }));
+    return `${base}/cat/${id}/${canonExtra(extraStr)}/cfg${cfgDigest}`;
+  }
+
+  // Manifest: fully config-dependent — hash the raw config string
+  const manifestMatch = path.match(/^(?:\/([^\/]+))?\/manifest\.json$/);
+  if (manifestMatch) {
+    return `${base}/manifest/${hashStr(manifestMatch[1] || '')}`;
+  }
+
+  if (path === '/api/stats') return `${base}/api/stats`;
+  if (path === '/health' || path === '/') return `${base}/health`;
+
+  return null;
+}
+
+/**
+ * Try to serve a cached response. Returns a Response or null.
+ */
+async function edgeResponseMatch(cacheKey) {
+  try {
+    const hit = await caches.default.match(cacheKey);
+    if (!hit) return null;
+    const headers = new Headers(hit.headers);
+    headers.set('x-as-cache', 'hit');
+    return new Response(hit.body, { status: hit.status, headers });
+  } catch (e) {
+    console.error('[EdgeCache] Response match error:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Store a response in the edge cache (fire-and-forget). The response's own
+ * Cache-Control max-age governs TTL inside the cache.
+ */
+function edgeResponsePut(cacheKey, response) {
+  try {
+    const putPromise = caches.default.put(cacheKey, response.clone());
+    const guarded = putPromise.catch(e => console.error('[EdgeCache] Response put error:', e.message));
+    if (__CTX?.waitUntil) __CTX.waitUntil(guarded);
+  } catch (e) {
+    console.error('[EdgeCache] Response put error:', e.message);
   }
 }
 
@@ -267,9 +425,9 @@ async function getIdMappings(id, source) {
     return haglundIdCache.get(cacheKey);
   }
 
-  // Check KV cache (persists across worker instance recyclings, 7d TTL)
+  // Check edge cache (persists across worker instance recyclings, 7d TTL)
   const kvKey = `hl:ids:${cacheKey}`;
-  const kvCached = await kvCacheGet(kvKey);
+  const kvCached = await edgeCacheGet(kvKey);
   if (kvCached) {
     haglundIdCache.set(cacheKey, kvCached);
     return kvCached;
@@ -304,7 +462,7 @@ async function getIdMappings(id, source) {
     
     // Cache the result (in-memory + KV with 7d TTL)
     haglundIdCache.set(cacheKey, mappings);
-    kvCachePut(kvKey, mappings, KV_TTL.HAGLUND);
+    edgeCachePut(kvKey, mappings, KV_TTL.HAGLUND);
     
     return mappings;
   } catch (error) {
@@ -329,7 +487,7 @@ async function getIdMappingsFromImdb(imdbId, season = null) {
 
   // Check KV cache (persists across worker instance recyclings, 7d TTL)
   const kvKey = `hl:imdb:${cacheKey}`;
-  const kvCached = await kvCacheGet(kvKey);
+  const kvCached = await edgeCacheGet(kvKey);
   if (kvCached) {
     haglundIdCache.set(cacheKey, kvCached);
     return kvCached;
@@ -373,7 +531,7 @@ async function getIdMappingsFromImdb(imdbId, season = null) {
     
     // Cache the result (in-memory + KV with 7d TTL)
     haglundIdCache.set(cacheKey, mappings);
-    kvCachePut(kvKey, mappings, KV_TTL.HAGLUND);
+    edgeCachePut(kvKey, mappings, KV_TTL.HAGLUND);
     
     return mappings;
   } catch (error) {
@@ -1584,7 +1742,7 @@ async function searchAllAnime(searchQuery, limit = 10) {
 
   // Check KV cache (persists across worker instance recyclings)
   const kvKey = `aa:search:${cacheKey}`;
-  const kvCached = await kvCacheGet(kvKey);
+  const kvCached = await edgeCacheGet(kvKey);
   if (kvCached) {
     console.log(`AllAnime search KV cache hit: "${searchQuery}"`);
     setCachedSearch(cacheKey, kvCached);
@@ -1634,7 +1792,7 @@ async function searchAllAnime(searchQuery, limit = 10) {
     // Empty results get a short negative-cache entry so repeated misses
     // don't re-hit the upstream API on every request
     setCachedSearch(cacheKey, results);
-    kvCachePut(kvKey, results, results.length > 0 ? KV_TTL.AA_SEARCH : KV_TTL.NEGATIVE);
+    edgeCachePut(kvKey, results, results.length > 0 ? KV_TTL.AA_SEARCH : KV_TTL.NEGATIVE);
     return results;
   } catch (e) {
     console.error('AllAnime search error:', e.message);
@@ -1649,7 +1807,7 @@ async function searchAllAnime(searchQuery, limit = 10) {
 async function getAllAnimeShowDetails(showId) {
   // Check KV cache first - show details (episode counts) change occasionally
   const kvKey = `aa:details:${showId}`;
-  const cached = await kvCacheGet(kvKey);
+  const cached = await edgeCacheGet(kvKey);
   if (cached) {
     return cached;
   }
@@ -1689,7 +1847,7 @@ async function getAllAnimeShowDetails(showId) {
     
     // Cache in KV (6 hour TTL - episode counts update as new episodes air)
     if (show) {
-      kvCachePut(kvKey, show, KV_TTL.AA_DETAILS);
+      edgeCachePut(kvKey, show, KV_TTL.AA_DETAILS);
     }
     return show;
   } catch (e) {
@@ -1709,7 +1867,7 @@ async function fetchCinemetaMeta(imdbId, type = 'series') {
   // Check KV cache first - Cinemeta metadata/episode lists rarely change
   const cinemetaType = type === 'movie' ? 'movie' : 'series';
   const kvKey = `cm:meta:${imdbId}:${cinemetaType}`;
-  const cached = await kvCacheGet(kvKey);
+  const cached = await edgeCacheGet(kvKey);
   if (cached) {
     return cached;
   }
@@ -1745,7 +1903,7 @@ async function fetchCinemetaMeta(imdbId, type = 'series') {
     };
     
     // Cache in KV (24 hour TTL - metadata is very stable)
-    kvCachePut(kvKey, result, KV_TTL.CINEMETA);
+    edgeCachePut(kvKey, result, KV_TTL.CINEMETA);
     return result;
   } catch (e) {
     console.error('Cinemeta fetch error:', e.message);
@@ -1773,14 +1931,27 @@ async function fetchCatalogData() {
   }
   
   // Try KV first (avoids GitHub raw subrequests on cold starts)
+  // idx: slim index (~7MB, fields used by handlers) — much cheaper to parse
+  // than the 16MB full catalog blob, which remains as fallback.
+  const indexKvKey = `idx:${CACHE_BUSTER}`;
   const catalogKvKey = `catalog:${CACHE_BUSTER}`;
   const filtersKvKey = `filters:${CACHE_BUSTER}`;
-  
-  const [kvCatalog, kvFilters] = await Promise.all([
-    kvCacheGet(catalogKvKey),
+
+  const [kvIndex, kvFilters] = await Promise.all([
+    kvCacheGet(indexKvKey),
     kvCacheGet(filtersKvKey),
   ]);
-  
+
+  if (kvIndex && kvFilters) {
+    catalogCache = kvIndex.catalog || kvIndex;
+    filterOptionsCache = kvFilters;
+    cacheTimestamp = now;
+    console.log(`[loadCatalogData] Loaded ${catalogCache.length} entries from slim index (version: ${kvIndex.version || 'unknown'})`);
+    return { catalog: catalogCache, filterOptions: filterOptionsCache };
+  }
+
+  const kvCatalog = await kvCacheGet(catalogKvKey);
+
   if (kvCatalog && kvFilters) {
     // KV catalog value is the catalog array directly
     catalogCache = kvCatalog.catalog || kvCatalog;
@@ -3892,6 +4063,44 @@ function findAnimeById(catalog, id) {
 function findAnimeByImdbId(catalog, imdbId) {
   return findAnimeById(catalog, imdbId);
 }
+
+// ===== SHARDED TITLE LOOKUP =====
+// Per-namespace KV buckets generated by upload-to-kv.js:
+//   tb:{version}:{ns}:{0-15} — ns is derived from the requested id prefix.
+// A bucket is a small JSON array of full catalog entries (~500KB), so a meta
+// lookup costs one small KV read instead of parsing the 16MB catalog.
+const TITLE_BUCKET_COUNT = 16;
+
+function metaLookupSpec(id) {
+  if (id.startsWith('tt')) return { ns: 'tt', raw: id };
+  if (id.startsWith('mal-')) return { ns: 'mal', raw: id.slice(4) };
+  if (id.startsWith('kitsu:')) return { ns: 'kitsu', raw: id.slice(6) };
+  return { ns: 'id', raw: id };
+}
+
+/**
+ * Look up a catalog entry by incoming meta id via sharded KV buckets.
+ * @returns {Promise<object|null|undefined>} the entry, null when the bucket
+ *          exists but holds no match (definitive miss), or undefined when
+ *          buckets aren't populated at all (caller should fall back to the
+ *          catalog index).
+ */
+async function findAnimeByIdFast(id) {
+  const { ns, raw } = metaLookupSpec(id);
+  const bucket = await kvCacheGet(`tb:${CACHE_BUSTER}:${ns}:${hashStr(raw) % TITLE_BUCKET_COUNT}`);
+  if (!bucket || !Array.isArray(bucket)) return undefined;
+
+  switch (ns) {
+    case 'tt':
+      return bucket.find(a => a.id === id || a.imdb_id === id) || null;
+    case 'mal':
+      return bucket.find(a => a.id === id || String(a.mal_id) === raw) || null;
+    case 'kitsu':
+      return bucket.find(a => a.id === id || String(a.kitsu_id) === raw) || null;
+    default:
+      return bucket.find(a => a.id === id) || null;
+  }
+}
 // Direct AllAnime show ID mappings for popular series
 // Maps: IMDB ID + season -> AllAnime show ID
 // This bypasses search entirely for known popular series
@@ -4037,21 +4246,31 @@ async function findAllAnimeShow(title, malId = null, aniListId = null) {
 
 // Handle meta requests - provide episode data from AllAnime
 // Also enriches metadata from AllAnime when Cinemeta data is poor
-async function handleMeta(catalog, type, id) {
+async function handleMeta(type, id, getCatalog) {
   // Decode URL-encoded ID
   const decodedId = decodeURIComponent(id);
-  const baseId = decodedId.split(':')[0];
-  
+  // Strip a trailing :{n} suffix (season hint) without mangling namespaced
+  // ids — 'kitsu:7442' is itself the id, not 'kitsu' + suffix.
+  const baseId = decodedId.startsWith('kitsu:')
+    ? decodedId.split(':').slice(0, 2).join(':')
+    : decodedId.split(':')[0];
+
   console.log(`Meta request for ${baseId}`);
-  
+
   // Block known non-anime entries (Western animation, etc.)
   if (NON_ANIME_BLACKLIST.has(baseId)) {
     console.log(`Blocked non-anime meta request: ${baseId}`);
     return { meta: null };
   }
-  
-  // First check our catalog (supports tt*, mal-*, kitsu:*)
-  let anime = findAnimeById(catalog, baseId);
+
+  // Fast path: sharded per-namespace KV bucket (~500KB read, no catalog parse).
+  // null = definitive miss (buckets populated, id absent). undefined = buckets
+  // not deployed yet — fall back to the catalog index.
+  let anime = await findAnimeByIdFast(baseId);
+  if (anime === undefined) {
+    const { catalog } = await getCatalog();
+    anime = findAnimeById(catalog, baseId);
+  }
   let cinemeta = null;
 
   // Not in our catalog = not an anime we serve. Return null without touching
@@ -4062,7 +4281,7 @@ async function handleMeta(catalog, type, id) {
     console.log(`No anime found for meta: ${baseId}`);
     return { meta: null };
   }
-  
+
   // Apply metadata overrides FIRST before any enrichment checks
   const hasOverride = !!METADATA_OVERRIDES[baseId];
   const overrides = hasOverride ? METADATA_OVERRIDES[baseId] : {};
@@ -4070,44 +4289,42 @@ async function handleMeta(catalog, type, id) {
     console.log(`Applying metadata overrides for ${baseId}`);
     anime = { ...anime, ...overrides };
   }
-  
+
   // Check if we need to enrich metadata from AllAnime/Cinemeta
   const needsEnrichment = isMetadataIncomplete(anime);
-  
-  // Search AllAnime for this show
-  const showId = await findAllAnimeShow(anime.name);
-  let showDetails = null;
-  
-  if (showId) {
-    // Get full show details from AllAnime
-    showDetails = await getAllAnimeShowDetails(showId);
-    if (showDetails && needsEnrichment) {
-      console.log(`Enriching metadata from AllAnime for: ${anime.name}`);
-    }
-  } else {
-    console.log(`No AllAnime match for: ${anime.name}`);
-  }
-  
-  // If we still need enrichment and AllAnime failed, try Cinemeta as fallback
-  // (Only for IMDB IDs, and only if we don't already have Cinemeta data)
-  if (needsEnrichment && !showDetails && !cinemeta && baseId.startsWith('tt')) {
-    console.log(`Trying Cinemeta fallback for: ${anime.name}`);
+
+  // For IMDB IDs Cinemeta is fetched anyway (proper season/episode structure)
+  // — do it first so AllAnime can be skipped when nothing needs it.
+  if (baseId.startsWith('tt')) {
     cinemeta = await fetchCinemetaMeta(baseId, type);
   }
-  
+
+  // Only hit AllAnime when it can change the output: incomplete metadata
+  // (enrichment), non-IMDB id (no Cinemeta → AllAnime is the episode
+  // fallback), or a Cinemeta entry without a video list.
+  const needAllAnime = needsEnrichment || !baseId.startsWith('tt') || !(cinemeta?.videos?.length);
+  let showDetails = null;
+
+  if (needAllAnime) {
+    const showId = await findAllAnimeShow(anime.name);
+    if (showId) {
+      showDetails = await getAllAnimeShowDetails(showId);
+      if (showDetails && needsEnrichment) {
+        console.log(`Enriching metadata from AllAnime for: ${anime.name}`);
+      }
+    } else {
+      console.log(`No AllAnime match for: ${anime.name}`);
+    }
+  }
+
   // Build episodes - PRIORITY: Cinemeta (has accurate seasons) > AllAnime > Catalog
   // Cinemeta is the authoritative source for season/episode structure
   // AllAnime is only used for stream discovery, not metadata
   const episodes = [];
-  
+
   // For IMDB IDs, ALWAYS prefer Cinemeta's video list for proper season structure
   // This ensures multi-season anime display correctly in Stremio
   if (baseId.startsWith('tt')) {
-    // Fetch Cinemeta if we haven't already
-    if (!cinemeta) {
-      cinemeta = await fetchCinemetaMeta(baseId, type);
-    }
-    
     if (cinemeta && cinemeta.videos && cinemeta.videos.length > 0) {
       // Use Cinemeta videos - they have proper season/episode numbers
       console.log(`Using Cinemeta videos for ${baseId}: ${cinemeta.videos.length} episodes across multiple seasons`);
@@ -4204,15 +4421,38 @@ export default {
     // Set global env/ctx references for KV cache helpers
     __ENV = env;
     __CTX = ctx;
-    
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS_HEADERS });
     }
-    
+
     const url = new URL(request.url);
+
+    // Edge response cache — public GET routes serve straight from the colo
+    // cache without invoking any data loading or rate-limit budget.
+    const cacheKey = request.method === 'GET' ? edgeResponseCacheKey(url.pathname) : null;
+    if (cacheKey) {
+      const hit = await edgeResponseMatch(cacheKey);
+      if (hit) return hit;
+    }
+
+    const response = await this._dispatch(request, env, ctx, url);
+
+    if (cacheKey && response.status === 200) {
+      edgeResponsePut(cacheKey, response);
+    }
+    return response;
+  },
+
+  async _dispatch(request, env, ctx, url) {
     const path = url.pathname;
-    
+
+    // Lazy catalog loader — meta requests served from title buckets and all
+    // non-data routes (OAuth, /api/*) never pay the catalog parse.
+    let catalogDataPromise = null;
+    const getCatalog = () => (catalogDataPromise ??= fetchCatalogData());
+
     // Get client IP for rate limiting
     const clientIP = request.headers.get('CF-Connecting-IP') || 
                      request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || 
@@ -4250,7 +4490,7 @@ export default {
     // API stats endpoint for configure page
     if (path === '/api/stats') {
       try {
-        const { catalog } = await fetchCatalogData();
+        const { catalog } = await getCatalog();
         const totalSeries = catalog.filter(a => isSeriesType(a)).length;
         const totalMovies = catalog.filter(a => isMovieType(a)).length;
         // Stats cached for 1 hour
@@ -4267,7 +4507,7 @@ export default {
     // Health check (doesn't need data)
     if (path === '/health' || path === '/') {
       try {
-        const { catalog } = await fetchCatalogData();
+        const { catalog } = await getCatalog();
         // Health check cached for 5 minutes
         return jsonResponse({
           status: 'healthy',
@@ -4284,27 +4524,23 @@ export default {
       }
     }
     
-    // Fetch data for all other routes
-    let catalog, filterOptions;
-    try {
-      const data = await fetchCatalogData();
-      catalog = data.catalog;
-      filterOptions = data.filterOptions;
-    } catch (error) {
-      return jsonResponse({ 
-        error: 'Failed to load catalog data',
-        message: error.message 
-      }, { status: 503 });
-    }
-    
     // Parse routes
     const manifestMatch = path.match(/^(?:\/([^\/]+))?\/manifest\.json$/);
     if (manifestMatch) {
       const config = parseConfig(manifestMatch[1]);
+      let data;
+      try {
+        data = await getCatalog();
+      } catch (error) {
+        return jsonResponse({
+          error: 'Failed to load catalog data',
+          message: error.message
+        }, { status: 503 });
+      }
       // Manifest cached for 24 hours - rarely changes
-      return jsonResponse(getManifest(filterOptions, config.showCounts, catalog, config.selectedCatalogs, config), { 
-        maxAge: MANIFEST_CACHE_TTL, 
-        staleWhileRevalidate: 3600 
+      return jsonResponse(getManifest(data.filterOptions, config.showCounts, data.catalog, config.selectedCatalogs, config), {
+        maxAge: MANIFEST_CACHE_TTL,
+        staleWhileRevalidate: 3600
       });
     }
     
@@ -4324,7 +4560,18 @@ export default {
           }
         }
       }
-      
+
+      // Catalog data is needed by every remaining branch below
+      let catalog;
+      try {
+        ({ catalog } = await getCatalog());
+      } catch (error) {
+        return jsonResponse({
+          error: 'Failed to load catalog data',
+          message: error.message
+        }, { status: 503 });
+      }
+
       // Handle search catalogs
       if (id === 'anime-search' || id === 'anime-series-search' || id === 'anime-movies-search') {
         if (!extra.search) {
@@ -4377,7 +4624,7 @@ export default {
             const listName = id.slice(14); // Remove 'anime-anilist-' prefix
             // Fetch tokens from KV if userId is set
             if (config.userId && env.USER_TOKENS) {
-              const tokens = await env.USER_TOKENS.get(config.userId, 'json');
+              const tokens = await getUserTokens(config.userId, env);
               if (tokens?.anilistToken) {
                 config.anilistToken = tokens.anilistToken;
               }
@@ -4387,7 +4634,7 @@ export default {
             const listName = id.slice(10); // Remove 'anime-mal-' prefix
             // Fetch tokens from KV if userId is set
             if (config.userId && env.USER_TOKENS) {
-              const tokens = await env.USER_TOKENS.get(config.userId, 'json');
+              const tokens = await getUserTokens(config.userId, env);
               if (tokens?.malToken) {
                 config.malToken = tokens.malToken;
               }
@@ -4425,7 +4672,7 @@ export default {
     if (metaMatch) {
       const [, configStr, type, id] = metaMatch;
       try {
-        const result = await handleMeta(catalog, type, id);
+        const result = await handleMeta(type, id, getCatalog);
         // Meta cached for 1 hour - episode lists don't change often
         return jsonResponse(result, { maxAge: META_HTTP_CACHE, staleWhileRevalidate: 600 });
       } catch (error) {
@@ -4777,7 +5024,7 @@ export default {
     // Debug catalog endpoint
     if (path === '/debug/catalog-info') {
       try {
-        const { catalog } = await fetchCatalogData();
+        const { catalog } = await getCatalog();
         const fridayAnime = catalog.filter(a => a.broadcastDay === 'Friday' && a.status === 'ONGOING');
         const malOnly = fridayAnime.filter(a => a.id && a.id.startsWith('mal-') && !a.imdb_id);
         

@@ -25,3 +25,9 @@ Thumbs.db
 
 # Wrangler/Cloudflare
 .wrangler/
+
+# Generated code-graph output
+graphify-out/
+
+# Windows reserved-name artifact (created by stray shell redirects)
+nul
