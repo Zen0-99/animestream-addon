@@ -359816,7 +359816,7 @@
       "description": "In celebration of \"Magic Knight Rayearth”anime’s 30th anniversary, a new animation project has been launched!",
       "year": 2026,
       "season": "fall",
-      "status": "unreleased",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://media.kitsu.app/anime/49008/poster_image/large-744c4394a93562c5863f0cd8d060319d.jpeg",
       "background": "https://live.metahub.space/background/medium/tt32813343/img",
@@ -359846,7 +359846,8 @@
         "魔法騎士レイアース （新アニメ化プロジェクト）"
       ],
       "_matchSource": "imdb_fuzzy",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "broadcastDay": "Wednesday"
     },
     {
       "id": "tt11328350",
@@ -388300,7 +388301,7 @@
       "description": "The second season of Seihantai na Kimi to Boku.",
       "year": 2026,
       "season": "SUMMER",
-      "status": "ONGOING",
+      "status": "FINISHED",
       "rating": 8.2,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx210031-TppgcHZh46LY.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx210031-TppgcHZh46LY.jpg",
@@ -388995,7 +388996,7 @@
       "description": "The second season of Tantei wa mou, Shindeiru.",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx152677-xVKqY1rqKK75.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx152677-xVKqY1rqKK75.jpg",
@@ -389008,7 +389009,7 @@
         "Romance",
         "Supernatural"
       ],
-      "episodeCount": null,
+      "episodeCount": 13,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -389018,7 +389019,8 @@
         "探偵はもう、死んでいる。Season2"
       ],
       "broadcastDay": "Wednesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 13
     },
     {
       "id": "mal-53913",
@@ -389069,7 +389071,7 @@
       "description": "A stage reading in the Magical Girl Raising Project franchise announced that an anime adaptation of Asari Endou's Magical Girl Raising Project Restart light novel volumes has been green-lit. Hiroyuki Hashimoto reported on Twitter that he will return from the first Magical Girl Raising Project anime as the director. The franchise's Twitter account also teased that various initiatives are in the works for \"Project restart.\"\n\n\n(Source: Anime News Network)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx160803-Rcr3IvhE7q9c.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx160803-Rcr3IvhE7q9c.png",
@@ -389128,7 +389130,7 @@
         "Magical★Explorer: Eroge no Yuujin Chara ni Tensei Shitakedo, Game Chishiki Tsukatte Jiyuu ni Ikiru",
         "マジカル★エクスプローラー　エロゲの友人キャラに転生したけど、ゲーム知識使って自由に生きる"
       ],
-      "broadcastDay": "Friday",
+      "broadcastDay": "Saturday",
       "countryOfOrigin": "JP"
     },
     {
@@ -389144,7 +389146,7 @@
       "description": "The second season of Kikansha no Mahou wa Tokubetsu desu.",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx172192-L4pRzycNZOOF.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx172192-L4pRzycNZOOF.jpg",
@@ -389180,7 +389182,7 @@
       "description": "The second season of Sasaki to Pii-chan.",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx176314-lpvca6vjmkeO.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx176314-lpvca6vjmkeO.jpg",
@@ -389191,7 +389193,7 @@
         "Fantasy",
         "Mahou Shoujo"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -389201,7 +389203,8 @@
         "佐々木とピーちゃん シーズン２"
       ],
       "broadcastDay": "Wednesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-59088",
@@ -389398,7 +389401,7 @@
       "description": "Sato Takahiro was an ordinary office worker and hobbyist gamer until the day he woke up on a spaceship–one that strangely resembled a craft from a favorite space-shooter game. With a decked-out ship, a crew full of babes, and a fantastic universe to explore, he's going to make the most of his good luck and create the life he's always dreamed of!\n\n\n\n(Source: Seven Seas Entertainment)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx186541-caYpLsLmbCh7.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx186541-caYpLsLmbCh7.jpg",
@@ -389437,7 +389440,7 @@
       "description": "This is a story of four girls living in the \"Dark Side\" of Academy City.\n\n\n\nIn Academy City where \"ESP\" has been recognized as a general science. Behind the peace, there is a Dark Side organization that undertakes missions that cannot be made public.\n\n\n\n\"ITEM\" is an elite unit consisting of four girls. Takitsubo Rikou is able to read and track the AIM fields emitted by those with abilities. Frenda Seivelun, who excels in combat using explosives and traps.\n\n\n\nKinuhata Saiai, who can manipulate nitrogen at will and plays a defensive role. And one of the 7 Espers that Academy City is proud of: Mugino Shizuri. They live freely in the darkness of the Academy City, and quietly set their sights on their target...!\n\n\n\nThis is a story of encounter, friendship, and darkness that eventually leads to a terrible incident!\n\n\n\n(Source: Kadokawa, translated)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx186742-v7yfbefc8fuO.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx186742-v7yfbefc8fuO.png",
@@ -389483,7 +389486,7 @@
         "Adventure",
         "Fantasy"
       ],
-      "episodeCount": null,
+      "episodeCount": 23,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -389492,8 +389495,9 @@
         "Gensou Suikoden",
         "幻想水滸伝"
       ],
-      "broadcastDay": "Saturday",
-      "countryOfOrigin": "JP"
+      "broadcastDay": "Tuesday",
+      "countryOfOrigin": "JP",
+      "episodes": 23
     },
     {
       "id": "mal-61153",
@@ -389544,7 +389548,7 @@
       "description": "New Battle Spirits TV Anime.\n\n\n",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx187990-tNyQPmr9TkYi.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx187990-tNyQPmr9TkYi.png",
@@ -389578,7 +389582,7 @@
       "description": "The second season of Ao no Hako.\n",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx189123-0secXELIhkIW.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx189123-0secXELIhkIW.jpg",
@@ -389589,7 +389593,7 @@
         "Slice of Life",
         "Sports"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -389599,7 +389603,8 @@
         "アオのハコ Season２"
       ],
       "broadcastDay": "Sunday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-61578",
@@ -389650,7 +389655,7 @@
       "description": "Aoi Ashito’s game has now earned him a spot on the A team, but he is quickly overwhelmed by his harsh new reality. Surrounded by elite players like Kuribayashi and Akutsu, practices are just as merciless as the matches. In this U-18 Premier League of powerhouse talent, Ashito must evolve or be crushed, if he’s ever to be acknowledged.\n\n\n\n(Source: Crunchyroll)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx191788-XC6F24LdX6a4.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx191788-XC6F24LdX6a4.jpg",
@@ -389755,7 +389760,7 @@
       "description": "\"The Mask” gives power to anyone who wears it.\n\n\n\nAt times, that means endless possibility, or unimaginable tragedy…\n\n\n\nPeru, pupil of the legendary mask maker Gaston Roux, becomes controlled by the “Mask of the Warrior God,” and unintentionally kills his friends, and even his own master.\n\n\n\nIn order to prevent this type of tragedy from reoccurring, Peru swears to destroy all of Gaston’s masks that are spread around the world. Confronting the sins that he has committed, he embarks on his voyage. Meeting new friends, then confronting powerful foes. The boy continues on. Until the day he can atone for his sins against his master.\n\n\n\n(Source: The Vermillion Mask English Site)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx195571-fvj7u5GI7BRT.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx195571-fvj7u5GI7BRT.jpg",
@@ -389775,7 +389780,7 @@
         "Shuiro no Kamen",
         "朱色の仮面"
       ],
-      "broadcastDay": null,
+      "broadcastDay": "Saturday",
       "countryOfOrigin": "JP"
     },
     {
@@ -389911,7 +389916,7 @@
         "Mystery",
         "Supernatural"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -389921,7 +389926,8 @@
         "#ゾンビさがしてます"
       ],
       "broadcastDay": "Saturday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62534",
@@ -390009,7 +390015,7 @@
       "description": "The second season of Hotel Inhumans.",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx199426-0nBgTV9BrcJn.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx199426-0nBgTV9BrcJn.jpg",
@@ -390019,7 +390025,7 @@
         "Action",
         "Drama"
       ],
-      "episodeCount": null,
+      "episodeCount": 13,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390029,7 +390035,8 @@
         "ホテル・インヒューマンズ 第2期"
       ],
       "broadcastDay": "Sunday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 13
     },
     {
       "id": "mal-62615",
@@ -390044,7 +390051,7 @@
       "description": "Misaki has often felt the urge to break free from everyday life and set out on a journey somewhere far away. Even though she doesn’t yet know what she wants to become, she longs to find something she can truly be passionate about.\n\n\nAt the start of a new chapter on a lively campus, she meets the members of the Railway Travel Research Club—known as the “Tetsuryo Club.” As her world unfolds along the railway lines, Misaki’s heart begins to race with excitement!\n\n\nAs TETSUDOU MUSUME celebrates its 20th anniversary, the Tetsuryo Club sets off on a journey through the world where the Railway Girls work, in search of moments of wonder.\n\n\n\n(Source: Pony Canyon Anime)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx199594-O16SEeK1Bn7L.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx199594-O16SEeK1Bn7L.jpg",
@@ -390053,7 +390060,7 @@
       "genres": [
         "Slice of Life"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390063,7 +390070,8 @@
         "てつりょー！meet with 鉄道むすめ"
       ],
       "broadcastDay": "Thursday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62696",
@@ -390078,7 +390086,7 @@
       "description": "In Chinjuku, the city that never sleeps, there is a psychic senior police officer who has powers beyond human comprehension! His name is Meguru Chojo! Along with his judo expert partner Nao Ippongi, this hilarious duo will keep the streets clean by any means necessary!",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx200294-E6KIgkFaJOfG.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx200294-E6KIgkFaJOfG.jpg",
@@ -390113,7 +390121,7 @@
       "description": "I was reborn as a villainous daughter in a reverse harem otome game. \n\n\n\nAfter being sick with a high fever at the age of 10, Pia Rockwell suddenly remembered her past life as a university student in Japan. But far from going down the villainess route, all this super timid girl wants is to finally use her knowledge from when she was a grad student studying to get her doctorate in paleontology. Her ultimate goal is to become a commoner, excavate fossils, build a museum and then become a curator.\n\n\n\nSo in order to escape the villainess route and avoid being deported by her fiancé during the graduation ball, Pia decides to avoid the upcoming hurt and heartache and asks to break off her engagement to Rufus, the Prime Minister's son.\n\n\n\nBut will her cunning fiancé let her go that easily?",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx200455-P3XStRQMJ7Di.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx200455-P3XStRQMJ7Di.png",
@@ -390124,7 +390132,7 @@
         "Fantasy",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390134,7 +390142,8 @@
         "弱気MAX令嬢なのに、辣腕婚約者様の賭けに乗ってしまった"
       ],
       "broadcastDay": "Sunday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62844",
@@ -390184,7 +390193,7 @@
       "description": "The manga centers on Mitsutaka Oji, a 40-year-old man who by all appearances is attractive and cool and is excellent at his job. However, he has a secret: he absolutely loves small and cute things. The comedy manga follows his everyday life.\n\n\n\n(Source: Anime News Network)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx202079-nwBpDUms0Bab.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx202079-nwBpDUms0Bab.png",
@@ -390194,7 +390203,7 @@
         "Comedy",
         "Slice of Life"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390204,7 +390213,8 @@
         "おじさんはカワイイものがお好き。"
       ],
       "broadcastDay": "Sunday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-62922",
@@ -390326,7 +390336,7 @@
       "description": "Urban legends come to life…Everyone’s heard an urban legend before, but few have ever come face-to-face with one. These phenomena are everywhere, existing in the shadows of reality. More and more of them have been appearing in the wake of the faceless kid sighted all over Japan. If you see her or one of the urban legends she brings―pray the boy in the red hood finds you before it’s too late. You won’t stand a chance on your own. But with his help, you may just live to see another day…\n\n\n\n(Source: Yen Press)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b203473-pzyaqV432Qko.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b203473-pzyaqV432Qko.jpg",
@@ -390362,7 +390372,7 @@
       "description": "One day, high schooler Ageha Yoshina picks up a mysterious “red phone card” left behind in a public telephone booth.\nA few days later, his childhood friend and classmate, Sakurako Amamiya—who possessed the same card—suddenly vanishes without a trace. In search of her, Ageha finds himself drawn into the rumors surrounding a nationwide string of mysterious disappearances, said to be the work of a secret organization known only as “Psyren.”\n\n\nWhen he accesses the group, a deadly game begins—one that will change his fate forever.\n\n\n\n(Source: PSYЯEN Official Site)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx204011-j45RZoqYbdZK.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx204011-j45RZoqYbdZK.jpg",
@@ -390445,7 +390455,7 @@
         "Mystery",
         "Supernatural"
       ],
-      "episodeCount": 24,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390455,7 +390465,8 @@
         "桃源暗鬼 日光・華厳の滝編"
       ],
       "broadcastDay": "Friday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-63221",
@@ -390539,7 +390550,7 @@
       "description": "On the surface, Satoko has it all—she’s beautiful, the daughter of a nobleman, and at a prime age for marriage. Unfortunately, she is also quite ill and only has a short time left to live. Before she can secure a marriage that will redeem her worth in her family’s eyes, she finds herself the target of the mysterious assassin Shinpei, and her plans are put in jeopardy. In order to save herself, she makes a desperate proposal—of marriage! When it comes to love, however, Shinpei takes “until death do we part” seriously.\n\n\n\n(Source: VIZ Media)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx205909-DM0fAzNQulod.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx205909-DM0fAzNQulod.jpg",
@@ -390549,7 +390560,7 @@
         "Drama",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390559,7 +390570,8 @@
         "ホタルの嫁入り"
       ],
       "broadcastDay": "Friday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-63323",
@@ -390680,7 +390692,7 @@
       "description": "A great hero lies undefeated on her deathbed, regretting that she never found a foe who could take her down. She never intended to meet her fate anywhere other than on the battlefield, and her peaceful demise has her wishing desperately that things could have been different... But when she suddenly comes to in the body of the young, frail Nia Liston, she’s got an all-new fight ahead of her. Nia is a sickly child, meaning she has a long way to go before she’s in fighting form. Now that she’s been given a second shot at life, however, she’s determined to get what she wants. She’s going to live—and die—for battle this time! Make way for the Merciless Maiden!\n\n\n\n(Source: J-Novel Club)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx206949-4HYI3YuP0eLI.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx206949-4HYI3YuP0eLI.png",
@@ -390689,7 +390701,7 @@
       "genres": [
         "Fantasy"
       ],
-      "episodeCount": null,
+      "episodeCount": 25,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390699,7 +390711,8 @@
         "凶乱令嬢ニア・リストン"
       ],
       "broadcastDay": "Tuesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 25
     },
     {
       "id": "mal-63409",
@@ -390714,7 +390727,7 @@
       "description": "“Make me a love potion.”\n\n\n\nAnd with that single sentence, the Good Witch of the Lake’s secret crush on the dashing Sir Harij ends in heartbreak. Still, when he promises to help her gather the ingredients, Rose is thrilled at the chance to gaze upon a man she’d normally never get to interact with. She learns to brace her pounding heart for their usual stilted conversations…but what is she to do when he inexplicably shows up at her doorstep with bread and a jar of apple butter?\n\n\n\n(Source: Yen Press)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b207191-MV0uJNxN7LNY.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b207191-MV0uJNxN7LNY.jpg",
@@ -390724,7 +390737,7 @@
         "Fantasy",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390734,7 +390747,8 @@
         "どうも、好きな人に惚れ薬を依頼された魔女です。"
       ],
       "broadcastDay": "Monday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-65079",
@@ -390818,7 +390832,7 @@
       "description": "Rein, an enchanter, is suddenly expelled from his guild one day. But instead of despairing, he declares, “Now I can do anything!” and begins reclaiming the massive number of enhancement points he once poured into his guildmates’ gear, setting off on a brand-new path as an adventurer.\n\n\nGathering around him are people carrying wounds that don’t fade easily: a genius adventurer who shut her heart after her party was slaughtered, a warrior who lost her family, and an assassin raised from childhood to kill. Yet Rein never rejects their pasts or their scars—he accepts them all with bright, straightforward warmth.\n\n\nThe stage is a unique fantasy world where Uzis, slingshots, and even yakuza exist side by side. But in this world, the more people rely on convenient technology, the more their magic weakens, and adventurers grow fragile.\n\n\nIntelligent, vicious monsters roam freely, while in the underworld, outlaws bare their greed and ambition as schemes and betrayals intertwine. In a world where ideals and justice are easily crushed, adventurers fight on with nothing but their magic and their convictions.\n\n\nThis is the story of those who have lost their place in the world finding a new way to live. Rein and his companions’ wild, free-spirited second life begins now!\n\n\n(Source: The Laid-Off Cheat-Granting Mage Enjoys a Second Lease on Life Site)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b207329-6VPeZIDfF4Sr.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b207329-6VPeZIDfF4Sr.png",
@@ -390855,7 +390869,7 @@
       "description": "Sequel to  Duel Masters LOST: Boukyaku no Taiyou.",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx208367-Z3OsCdeAopH4.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx208367-Z3OsCdeAopH4.png",
@@ -390890,7 +390904,7 @@
       "description": "The second half of Mahou no Shimai LuluttoLilly.",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx209032-MD8TDzYtFoL0.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx209032-MD8TDzYtFoL0.png",
@@ -390925,7 +390939,7 @@
       "description": "Office worker Akira Yagami’s altruistic nature usually gets him the short end of the stick. When he dies after saving a kid from oncoming traffic...he reincarnates in another world as a goblin?! Normally, goblins only live for seven days, but Akira’s newfound powers let him defy the species’ normal life span...and are the key to his path to becoming the strongest goblin ever!\n\n\n\n(Source: Yen Press)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx209219-3yhKlRx0LX3p.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx209219-3yhKlRx0LX3p.jpg",
@@ -390948,7 +390962,7 @@
         "Tensei Goblin Dakedo Shitsumon Aru?",
         "転生ゴブリンだけど質問ある？"
       ],
-      "broadcastDay": null,
+      "broadcastDay": "Monday",
       "countryOfOrigin": "JP"
     },
     {
@@ -390964,7 +390978,7 @@
       "description": "On her way home from school one day, Noriko is unexpectedly plunged into a strange and extraordinary fantasy world. Her troubles compound exponentially when she is rescued and befriended by a handsome young man by the name of Izark. He may be brave and courageous, but inside Izark lurks the darkest evil imaginable. And according to an ancient prophecy, Noriko possesses the power to unleash that evil. Now, inexorably bound together, these two unlikely allies must navigate a world both wondrous and hostile.\n\n\n\n(Source: VIZ Media)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx209463-Yxk2q10RXgg8.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx209463-Yxk2q10RXgg8.jpg",
@@ -391019,7 +391033,7 @@
         "TANK CHAIR: Sensha Isu",
         "TANK CHAIR-戦車椅子-"
       ],
-      "broadcastDay": null,
+      "broadcastDay": "Sunday",
       "countryOfOrigin": "JP"
     },
     {
@@ -391035,7 +391049,7 @@
       "description": "Sato-san is the unattainable flower of the class. She is always cold and curt with classmates, but only I know she's actually very cute when she smiles, even if she's not much of a photographer.\n\n\n\nOshio-kun is friendly and lively, but only I know he works at his family's cafe after school. He does a great job with the cafe's SNS account, and his mischievous smile makes my heart skip a beat!\n\n\n\nInnocent and sweet, but sometimes frustrating, this is a 120%-pure fluffy story about two people falling in love for the first time.",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx209502-C81oN8M4Smlo.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx209502-C81oN8M4Smlo.jpg",
@@ -391045,7 +391059,7 @@
         "Comedy",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -391055,7 +391069,8 @@
         "塩対応の佐藤さんが俺にだけ甘い"
       ],
       "broadcastDay": "Tuesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-63764",
@@ -391210,7 +391225,7 @@
       "description": "After using her SSS-Rank skill, Internet, to crush her former family’s ambitions, Lorna is free to travel the world. Her next stop is the port town of Aquas, where she hopes to see the sights and chow down on some fresh seafood. But when she arrives, the place is on the brink of destruction thanks to a certain Weekly Quest… Good thing Lorna has the gods on her side!\n\n\n\n(Source: Crunchyroll)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx211778-0MXK5HqVFBYH.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx211778-0MXK5HqVFBYH.jpg",
@@ -391246,7 +391261,7 @@
       "description": "The second season of Hyouken no Majutsushi ga Sekai wo Suberu.\n\n\nAs rival schools compete in the Magicks War, a darker threat looms over Ray and his friends.\n\n\nSource: Crunchyroll News)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx212503-sXBpRZr96c4e.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx212503-sXBpRZr96c4e.jpg",
@@ -391391,7 +391406,7 @@
       "description": "The story takes place 20 years after the robot Dandivine defeated the mysterious Aposdoll. The world is now in peace. However, toy manufacturer Kasuga, who relied on its toys of merchandise of Dandivine, has fallen into decline. Thus, Kasuga's president Genjuro Shijima prayed for Dandivine's revival, and the Aposdoll suddenly returned. High school student Gekiha Shijima gets an invitation from his uncle Yusaku Kuroiwa, the former main pilot of Dandivine, to pilot the giant robot himself.\n\n\n\n(Source: Anime News Network)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx213068-aFSedkY5bQ4m.png",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx213068-aFSedkY5bQ4m.png",
@@ -391686,7 +391701,7 @@
         "Adventure",
         "Fantasy"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -391696,7 +391711,8 @@
         "蒼き伝承 ウェルシュ&シェーダー"
       ],
       "broadcastDay": "Friday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-65095",
@@ -391729,6 +391745,75 @@
       "synonyms": [
         "PetitCure: Precure Fairies Season 4",
         "ぷちきゅあ～Precure Fairies～ シーズン4"
+      ],
+      "broadcastDay": "Thursday",
+      "countryOfOrigin": "JP"
+    },
+    {
+      "id": "mal-63818",
+      "imdb_id": null,
+      "kitsu_id": null,
+      "mal_id": 63818,
+      "anilist_id": 187990,
+      "anidb_id": null,
+      "type": "series",
+      "name": "Battle Spirits [Re] Zekkai No Ku",
+      "slug": "battle-spirits-re-zekkai-no-ku",
+      "description": "Keio 3, Hinomoto, Eito. As the Bakumatsu throws Japan into turmoil, young Kuu Bashin dreams of becoming stronger through Standard Battle Spirits. His world changes when he encounters Ajara Zetsu, a wandering samurai and formidable Eternal Battler pursued by anti-shogunate forces. As the worlds of Standard and Eternal Battle collide, Kuu is pulled into Zetsu’s journey—and sets history in motion.\n\n\n(Source: Crunchyroll)",
+      "year": 2026,
+      "season": "FALL",
+      "status": "ONGOING",
+      "rating": 5,
+      "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx187990-tNyQPmr9TkYi.png",
+      "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx187990-tNyQPmr9TkYi.png",
+      "logo": null,
+      "cast": [],
+      "genres": [
+        "Action",
+        "Fantasy"
+      ],
+      "episodeCount": null,
+      "runtime": "24 min",
+      "ageRating": null,
+      "subtype": "TV",
+      "popularity": 1536,
+      "synonyms": [
+        "Battle Spirits [Re] Zekkai No Ku",
+        "Battle Spirits [Re] 絶界の空"
+      ],
+      "broadcastDay": "Tuesday",
+      "countryOfOrigin": "JP"
+    },
+    {
+      "id": "mal-61227",
+      "imdb_id": null,
+      "kitsu_id": null,
+      "mal_id": 61227,
+      "anilist_id": 188034,
+      "anidb_id": null,
+      "type": "series",
+      "name": "Girls und Panzer: Motto Love Love Sakusen desu!",
+      "slug": "girls-und-panzer-motto-love-love-sakusen-desu",
+      "description": "A deep dive into the untold daily lives and the inter-school interactions of the Ooarai Girls' team and the other students (along with the colorful characters that surround them) who are wholeheartedly dedicated to the way of the tank!\n\n\n\n(Source: Official Website, translated)\n\n\n\nNote: The series had a four-part theatrical pre-screening in Japan starting in December 2025. Regular TV broadcast began in October 2026.\n\n\n• Part 1 releasing theatrically on December 26, 2025.\n\n• Part 2 releasing theatrically on January 30, 2026.\n\n• Part 3 releasing theatrically on March 6, 2026.\n\n• Part 4 releasing theatrically on April 10, 2026.",
+      "year": 2026,
+      "season": "FALL",
+      "status": "ONGOING",
+      "rating": 7.3,
+      "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx188034-oRwVKBMezOOk.jpg",
+      "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx188034-oRwVKBMezOOk.jpg",
+      "logo": null,
+      "cast": [],
+      "genres": [
+        "Comedy"
+      ],
+      "episodeCount": 12,
+      "runtime": "24 min",
+      "ageRating": null,
+      "subtype": "TV",
+      "popularity": 3835,
+      "synonyms": [
+        "Girls und Panzer: Motto Love Love Sakusen desu!",
+        "ガールズ＆パンツァー もっとらぶらぶ作戦です！"
       ],
       "broadcastDay": "Thursday",
       "countryOfOrigin": "JP"
