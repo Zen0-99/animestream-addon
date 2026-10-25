@@ -389341,7 +389341,7 @@
         "Drama",
         "Fantasy"
       ],
-      "episodeCount": null,
+      "episodeCount": 24,
       "runtime": null,
       "ageRating": null,
       "subtype": "ONA",
@@ -389351,7 +389351,8 @@
         "ロメリア戦記 〜魔王を倒した後も人類やばそうだから軍隊組織した〜"
       ],
       "broadcastDay": "Saturday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 24
     },
     {
       "id": "mal-60601",
@@ -391819,6 +391820,40 @@
         "ガールズ＆パンツァー もっとらぶらぶ作戦です！"
       ],
       "broadcastDay": "Thursday",
+      "countryOfOrigin": "JP"
+    },
+    {
+      "id": "mal-65119",
+      "imdb_id": null,
+      "kitsu_id": null,
+      "mal_id": 65119,
+      "anilist_id": 218532,
+      "anidb_id": null,
+      "type": "series",
+      "name": "Maomao no Hitorigoto 3rd Season",
+      "slug": "maomao-no-hitorigoto-3rd-season",
+      "description": "Chibi shorts to Kusuriya no Hitorigoto 3rd Season released on the TOHO animation YouTube channel.\n\n\nNote: Episode count begins at 49.",
+      "year": 2026,
+      "season": "FALL",
+      "status": "ONGOING",
+      "rating": null,
+      "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx218532-I1GCprJrJ5sm.png",
+      "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx218532-I1GCprJrJ5sm.png",
+      "logo": null,
+      "cast": [],
+      "genres": [
+        "Comedy"
+      ],
+      "episodeCount": null,
+      "runtime": "2 min",
+      "ageRating": null,
+      "subtype": "ONA",
+      "popularity": 317,
+      "synonyms": [
+        "Maomao no Hitorigoto 3rd Season",
+        "猫猫のひとりごと 第3期"
+      ],
+      "broadcastDay": "Monday",
       "countryOfOrigin": "JP"
     }
   ],
