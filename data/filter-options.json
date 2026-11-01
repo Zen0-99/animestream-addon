@@ -97,14 +97,14 @@
     ],
     "withCounts": [
       "Animation (4326)",
-      "Comedy (2758)",
+      "Comedy (2759)",
       "Action (2044)",
       "Drama (1632)",
       "Adventure (1597)",
       "Fantasy (1209)",
       "Sci-Fi (1087)",
       "Sci-Fi & Fantasy (949)",
-      "Romance (917)",
+      "Romance (918)",
       "Action & Adventure (800)",
       "School (651)",
       "Slice of Life (591)",
@@ -566,7 +566,7 @@
     ],
     "withCounts": [
       "2026 - Winter (69)",
-      "2026 - Fall (90)",
+      "2026 - Fall (91)",
       "2026 - Summer (86)",
       "2026 - Spring (5)",
       "2025 - Winter (52)",
@@ -831,17 +831,17 @@
       "Wednesday (8)",
       "Thursday (9)",
       "Friday (15)",
-      "Saturday (25)",
+      "Saturday (24)",
       "Sunday (22)"
     ]
   },
   "stats": {
-    "totalAnime": 7770,
-    "totalSeries": 6126,
+    "totalAnime": 7771,
+    "totalSeries": 6127,
     "totalMovies": 1644,
     "genreCount": 93,
     "movieGenreCount": 58,
     "seasonCount": 248,
-    "ongoingCount": 99
+    "ongoingCount": 98
   }
 }
