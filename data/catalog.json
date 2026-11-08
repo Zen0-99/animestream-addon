@@ -390304,7 +390304,7 @@
       "description": "Sixth-grader Yuuma Ashihara and his twin sister, Sawa, are playing Actual Magic , a brand-new virtual reality MMORPG, when it suddenly begins fusing with the real world. Amid all the chaos and confusion, it becomes clear that death is lurking around every corner, including when Yuuma runs into his classmate Sumika. Before, she was one of the cutest girls in his class, but she’s since undergone a terrible metamorphosis—into one of the game’s horrifying monsters! From the author of Sword Art Online and Accel World comes a story beyond VR and AR, where gaming and reality are one and the same…and staying alive is just the beginning!\n\n\n\n(Source: Yen Press)",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b203275-YyNHygkzIjMC.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b203275-YyNHygkzIjMC.jpg",
@@ -391589,7 +391589,7 @@
       "description": "Note: The anime first premiered in theaters across Japan on October 2, 2026. It was later split into 3 episodes aired weekly on TV starting November 7, 2026.",
       "year": 2026,
       "season": "FALL",
-      "status": "UPCOMING",
+      "status": "ONGOING",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx214536-dl2KJdHcKWJl.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx214536-dl2KJdHcKWJl.jpg",
@@ -391887,6 +391887,75 @@
       "synonyms": [
         "Hotaru no Yomeiri: Choitashi",
         "ホタルの嫁入り ちょいたし"
+      ],
+      "broadcastDay": "Monday",
+      "countryOfOrigin": "JP"
+    },
+    {
+      "id": "mal-58879",
+      "imdb_id": null,
+      "kitsu_id": null,
+      "mal_id": 58879,
+      "anilist_id": 177636,
+      "anidb_id": null,
+      "type": "series",
+      "name": "NINJA SKOOLER Pilot Film",
+      "slug": "ninja-skooler-pilot-film",
+      "description": "Rappa is an orphan who idolizes fictional ninja.\n\n\n\nOne snowy night, he falls from a rooftop and is saved by a real ninja named Okachimachi and his master. Rappa turns up at their door asking to become an apprentice, and the three begin living together as a family.\n\n\n\n\n\nYears later, Rappa throws himself into training to become a ninja who can protect the town.The children who look up to him gather at the master’s traditional Japanese candy shop, a place where he can laugh with family and friends. \n\n\n\nRappa thinks these days will last forever, but he sees Okachimachi tending to their retired master and catches a glimpse of the pain the master has kept hidden…\n\n\n\n\n\n (Source: BLUE RIGHTS)\n\n\n\n\n Note: From a report via Anime News Network, this anime was initially announced by the studio Kinema Citrus and revealed at Anime Central 2024's \"Kinema Citrus Sweet 16: My Happy Marriage and What's New\" panel. \n\n",
+      "year": 2026,
+      "season": "FALL",
+      "status": "FINISHED",
+      "rating": null,
+      "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx177636-LJbTfxq1NBAz.jpg",
+      "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx177636-LJbTfxq1NBAz.jpg",
+      "logo": null,
+      "cast": [],
+      "genres": [
+        "Action",
+        "Slice of Life"
+      ],
+      "episodeCount": 1,
+      "runtime": "9 min",
+      "ageRating": null,
+      "subtype": "ONA",
+      "popularity": 1208,
+      "synonyms": [
+        "NINJA SKOOLER Pilot Film",
+        "ニンジャ スクーラー パイロットフィルム"
+      ],
+      "broadcastDay": null,
+      "countryOfOrigin": "JP"
+    },
+    {
+      "id": "al-219507",
+      "imdb_id": null,
+      "kitsu_id": null,
+      "mal_id": null,
+      "anilist_id": 219507,
+      "anidb_id": null,
+      "type": "series",
+      "name": "Ocha-ken: Chobitto Monogatari",
+      "slug": "ocha-ken-chobitto-monogatari",
+      "description": "New web short anime for Ocha-ken\n\n\n\nThe Ocha-ken are always drinking tea, eating sweets, and just lounging around doing whatever they want.\nWe want you to take a relaxing break too. Aren't you unknowingly overworking yourself and getting tired?\nLet's relax with the Tea Dogs in an anime again sometime!",
+      "year": 2026,
+      "season": "FALL",
+      "status": "ONGOING",
+      "rating": null,
+      "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx219507-6cmKGZsdXrcc.jpg",
+      "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx219507-6cmKGZsdXrcc.jpg",
+      "logo": null,
+      "cast": [],
+      "genres": [
+        "Slice of Life"
+      ],
+      "episodeCount": 12,
+      "runtime": "2 min",
+      "ageRating": null,
+      "subtype": "ONA",
+      "popularity": 17,
+      "synonyms": [
+        "Ocha-ken: Chobitto Monogatari",
+        "お茶犬 ーちょびっとものがたりー"
       ],
       "broadcastDay": null,
       "countryOfOrigin": "JP"
