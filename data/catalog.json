@@ -389377,7 +389377,7 @@
         "Adventure",
         "Fantasy"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -389387,7 +389387,8 @@
         "転生貴族、鑑定スキルで成り上がる 第3期"
       ],
       "broadcastDay": "Sunday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-60948",
@@ -389452,7 +389453,7 @@
         "Action",
         "Sci-Fi"
       ],
-      "episodeCount": null,
+      "episodeCount": 11,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -389462,7 +389463,8 @@
         "とある暗部の少女共棲"
       ],
       "broadcastDay": "Friday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 11
     },
     {
       "id": "mal-61140",
@@ -390244,7 +390246,7 @@
         "Adventure",
         "Fantasy"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390254,7 +390256,8 @@
         "貸した魔力は【リボ払い】で強制徴収"
       ],
       "broadcastDay": "Saturday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-39168",
@@ -390848,7 +390851,7 @@
         "Fantasy",
         "Slice of Life"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390858,7 +390861,8 @@
         "追放されたチート付与魔術師は気ままなセカンドライフを謳歌する。　～俺は武器だけじゃなく、あらゆるものに『強化ポイント』を付与できるし、俺の意思でいつでも効果を解除できるけど、残った人たち大丈夫？～"
       ],
       "broadcastDay": "Tuesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-64848",
@@ -390918,7 +390922,7 @@
         "Mahou Shoujo",
         "Music"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390928,7 +390932,8 @@
         "魔法の姉妹ルルットリリィ 第2クール"
       ],
       "broadcastDay": "Sunday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-63712",
@@ -390957,7 +390962,7 @@
         "Fantasy",
         "Romance"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -390967,7 +390972,8 @@
         "転生ゴブリンだけど質問ある？"
       ],
       "broadcastDay": "Monday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-63753",
@@ -391420,7 +391426,7 @@
         "Action",
         "Mecha"
       ],
-      "episodeCount": null,
+      "episodeCount": 12,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -391430,7 +391436,8 @@
         "獣王武神ダンデヴァイン"
       ],
       "broadcastDay": "Wednesday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 12
     },
     {
       "id": "mal-64459",
@@ -391564,7 +391571,7 @@
         "Romance",
         "Slice of Life"
       ],
-      "episodeCount": null,
+      "episodeCount": 13,
       "runtime": null,
       "ageRating": null,
       "subtype": "TV",
@@ -391574,7 +391581,8 @@
         "氷の城壁 第2期"
       ],
       "broadcastDay": "Thursday",
-      "countryOfOrigin": "JP"
+      "countryOfOrigin": "JP",
+      "episodes": 13
     },
     {
       "id": "mal-63938",
@@ -391589,7 +391597,7 @@
       "description": "Note: The anime first premiered in theaters across Japan on October 2, 2026. It was later split into 3 episodes aired weekly on TV starting November 7, 2026.",
       "year": 2026,
       "season": "FALL",
-      "status": "ONGOING",
+      "status": "FINISHED",
       "rating": null,
       "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx214536-dl2KJdHcKWJl.jpg",
       "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx214536-dl2KJdHcKWJl.jpg",
@@ -391956,6 +391964,43 @@
       "synonyms": [
         "Ocha-ken: Chobitto Monogatari",
         "お茶犬 ーちょびっとものがたりー"
+      ],
+      "broadcastDay": null,
+      "countryOfOrigin": "JP"
+    },
+    {
+      "id": "al-203368",
+      "imdb_id": null,
+      "kitsu_id": null,
+      "mal_id": null,
+      "anilist_id": 203368,
+      "anidb_id": null,
+      "type": "series",
+      "name": "Onegai☆Teacher OVA",
+      "slug": "onegai-teacher-ova",
+      "description": "New Onegai☆Teacher anime project initiated after the 20th anniversary of the series and the closure of Lake Kizaki Capeground.",
+      "year": 2026,
+      "season": "FALL",
+      "status": "FINISHED",
+      "rating": null,
+      "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx203368-jHT4lwmXFxFU.jpg",
+      "background": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx203368-jHT4lwmXFxFU.jpg",
+      "logo": null,
+      "cast": [],
+      "genres": [
+        "Comedy",
+        "Drama",
+        "Romance",
+        "Sci-Fi"
+      ],
+      "episodeCount": 1,
+      "runtime": "29 min",
+      "ageRating": null,
+      "subtype": "OVA",
+      "popularity": 322,
+      "synonyms": [
+        "Onegai☆Teacher OVA",
+        "おねがい☆ティーチャー OVA"
       ],
       "broadcastDay": null,
       "countryOfOrigin": "JP"
